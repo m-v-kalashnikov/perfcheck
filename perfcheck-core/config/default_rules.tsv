@@ -1,0 +1,11 @@
+id	langs	description	category	severity
+perf_avoid_string_concat_loop	go,rust	Avoid string concatenation in loops; use builders or reserved buffers	memory	warning
+perf_regex_compile_once	go	Compile regular expressions once instead of inside hot loops	cpu	warning
+perf_preallocate_collections	go,rust	Preallocate slices, vectors, and maps when the final size is predictable	allocation	warning
+perf_avoid_reflection_dynamic	go,rust	Avoid reflection in Go and dynamic dispatch in Rust hot paths	runtime	high
+perf_bound_concurrency	go,rust	Bound concurrency with worker pools or async limits to prevent oversubscription	concurrency	error
+perf_borrow_instead_of_clone	rust	Prefer borrowing instead of cloning to avoid unnecessary allocations	allocation	high
+perf_equal_fold_compare	go	Use strings.EqualFold instead of strings.ToLower or strings.ToUpper for comparisons	string	info
+perf_vec_reserve_capacity	rust	Reserve capacity on vectors built inside deterministic loops	allocation	warning
+perf_syncpool_store_pointers	go	Store pointer types in sync.Pool to avoid interface allocation churn	allocation	medium
+perf_writer_prefer_bytes	go	Write byte slices directly instead of converting to strings	io	info

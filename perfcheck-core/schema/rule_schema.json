@@ -1,0 +1,12 @@
+{
+  "format": "tsv",
+  "delimiter": "\t",
+  "columns": [
+    { "name": "id", "type": "string", "required": true, "description": "Stable rule identifier" },
+    { "name": "langs", "type": "string", "required": true, "description": "Comma separated list of supported languages" },
+    { "name": "description", "type": "string", "required": true, "description": "Human readable rule summary" },
+    { "name": "category", "type": "string", "required": true, "description": "Rule taxonomy bucket" },
+    { "name": "severity", "type": "string", "required": true, "description": "Recommended severity level (info, warning, medium, high, error)" }
+  ],
+  "notes": "The TSV header row must match the column names exactly. Languages are normalized to lowercase tokens."
+}

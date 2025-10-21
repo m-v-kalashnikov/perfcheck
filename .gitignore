@@ -1,0 +1,7 @@
+.idea/
+/bin/
+/target/
+/perfcheck-core/node_modules/
+/vendor/
+/**/*.exe
+/rust/target/
