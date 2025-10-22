@@ -4,8 +4,8 @@ This guide explains how to run perfcheck inside popular lint aggregators for
 Go and Rust projects.
 
 For this repository, the fastest path is to run the bundled commands:
-- `just lint-go` builds the GolangCI-Lint bridge, runs `golangci-lint run` with the checked-in configuration, and then executes the perfcheck multichecker across the Go sources.
-- `just maintain-rust` runs `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo deny check`, `cargo audit`, and `cargo +nightly udeps --all-targets` in sequence.
+- `just go-maintain` builds the GolangCI-Lint bridge, runs `golangci-lint run` with the checked-in configuration, executes the perfcheck multichecker, verifies `gofmt`, checks `go.mod`, and runs `govulncheck ./...` (expect the first `govulncheck` run to download vulnerability data).
+- `just rust-maintain` runs `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo deny check`, `cargo audit`, and `cargo +nightly udeps --all-targets` in sequence.
 The Rust workflow requires `rustfmt`, `clippy`, `cargo-deny`, `cargo-audit`, and `cargo-udeps` along with a nightly toolchain; the deny/audit steps need the RustSec advisory database to be refreshed when network access is permitted.
 
 ## GolangCI-Lint
@@ -22,7 +22,7 @@ The Rust workflow requires `rustfmt`, `clippy`, `cargo-deny`, `cargo-audit`, and
    ```bash
    ./bin/perfcheck-golangci ./...
    ```
-   The `just lint-go` recipe automates both steps when working inside this repository.
+  The `just go-maintain` recipe automates these steps and adds the formatting, module verification, and `govulncheck` checks when working inside this repository.
 
 ## Clippy
 

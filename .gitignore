@@ -6,3 +6,4 @@
 /**/*.exe
 /rust/target/
 /go/bin/
+/go/.govulncache/

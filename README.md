@@ -31,9 +31,9 @@ Cross-language **Performance-by-Default** linting toolkit for Go and Rust. The g
 - Keep rule IDs stable; they double as numeric hashes for hot-path lookups.
 - Update docs/performance-by-default.md when expanding the rule set.
 - Install local tooling before linting: `golangci-lint`, `rustup component add rustfmt clippy`, `rustup toolchain install nightly`, and `cargo install cargo-deny cargo-audit cargo-udeps` (these pull advisory databases on first run).
-- Run `just lint-go` to build the GolangCI-Lint bridge and execute the Go analyzer suite (fails on lint violations).
-- Run `just maintain-rust` to apply `cargo fmt --check`, `cargo clippy`, `cargo deny`, `cargo audit`, and `cargo +nightly udeps` in sequence, stopping on the first failure (the deny/audit steps require the RustSec database, so ensure network access when refreshing it).
-- Run `just smoke` from the repository root to execute the lint commands, Go tests, Rust tests, and `openspec validate --strict` before submitting changes.
+- Run `just go-maintain` to build the GolangCI-Lint bridge, execute the Go analyzer suite, confirm `gofmt` cleanliness, verify `go.mod`, and scan with `govulncheck` (first run downloads the Go vulnerability database).
+- Run `just rust-maintain` to apply `cargo fmt --check`, `cargo clippy`, `cargo deny`, `cargo audit`, and `cargo +nightly udeps` in sequence, stopping on the first failure (the deny/audit steps require the RustSec database, so ensure network access when refreshing it).
+- Run `just pre-commit` from the repository root to execute the lint commands, Go tests, Rust tests, and `openspec validate --strict` before submitting changes.
 
 ## Rule Matrix
 

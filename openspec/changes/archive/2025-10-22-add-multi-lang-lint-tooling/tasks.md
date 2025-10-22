@@ -9,4 +9,4 @@
 ## 3. Documentation & Automation
 - [x] 3.1 Update developer workflow docs to describe when to run the Go and Rust lint/audit commands.
 - [x] 3.2 Integrate the new commands into CI or the documented smoke-test suite so regressions surface automatically.
-- [x] 3.3 Validate by running both commands locally and capturing their passing output in the change log or PR notes. *(Executed `just lint-go` and `just maintain-rust`; both succeeded.)*
+- [x] 3.3 Validate by running both commands locally and capturing their passing output in the change log or PR notes. *(Executed the Go maintenance command—now `just go-maintain`—and `just rust-maintain`; both succeeded.)*
