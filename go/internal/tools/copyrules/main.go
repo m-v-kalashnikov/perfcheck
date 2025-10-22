@@ -28,8 +28,8 @@ func main() {
 		}
 	}()
 
-	if err := os.MkdirAll(filepath.Dir(*dst), 0o755); err != nil {
-		exitErr(fmt.Errorf("create destination dir: %w", err))
+	if mkErr := os.MkdirAll(filepath.Dir(*dst), 0o755); mkErr != nil {
+		exitErr(fmt.Errorf("create destination dir: %w", mkErr))
 	}
 
 	out, err := os.Create(*dst)

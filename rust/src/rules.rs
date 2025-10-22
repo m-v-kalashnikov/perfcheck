@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use std::sync::OnceLock;
+use std::{collections::HashMap, sync::OnceLock};
 
 const DEFAULT_RULES: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -28,9 +27,13 @@ pub struct RuleRegistry {
 
 impl RuleRegistry {
     /// Returns a lazily-initialized registry based on the embedded rule data.
-    pub fn global() -> &'static RuleRegistry {
+    ///
+    /// # Panics
+    /// Panics when the embedded TSV payload is malformed or missing required
+    /// columns.
+    pub fn global() -> &'static Self {
         REGISTRY.get_or_init(|| {
-            RuleRegistry::from_tsv(DEFAULT_RULES).expect("embedded rule registry is invalid")
+            Self::from_tsv(DEFAULT_RULES).expect("embedded rule registry is invalid")
         })
     }
 
@@ -100,30 +103,28 @@ impl RuleRegistry {
             indexes.sort_by(|a, b| all[*a].id.cmp(&all[*b].id));
         }
 
-        Ok(Self {
-            all,
-            by_id,
-            by_lang,
-        })
+        Ok(Self { all, by_id, by_lang })
     }
 
     /// Returns the metadata for the supplied identifier, if present.
+    #[must_use]
     pub fn rule(&self, id: &str) -> Option<&Rule> {
         self.by_id.get(id).map(|idx| &self.all[*idx])
     }
 
     /// Returns an iterator over rules matching the provided language token.
+    #[must_use]
     pub fn rules_for_lang<'a>(&'a self, lang: &str) -> RuleIter<'a> {
         let key = lang.to_ascii_lowercase();
-        let indexes = self.by_lang.get(&key).map(|v| v.as_slice()).unwrap_or(&[]);
-        RuleIter {
-            rules: &self.all,
-            indexes,
-            pos: 0,
-        }
+        let indexes = match self.by_lang.get(&key) {
+            Some(values) => values.as_slice(),
+            None => &[],
+        };
+        RuleIter { rules: &self.all, indexes, pos: 0 }
     }
 
     /// Returns the full rule list.
+    #[must_use]
     pub fn all(&self) -> &[Rule] {
         &self.all
     }
@@ -150,11 +151,11 @@ impl<'a> Iterator for RuleIter<'a> {
 }
 
 fn hash(id: &str) -> u32 {
-    const OFFSET: u32 = 0x811C9DC5;
+    const OFFSET: u32 = 0x811C_9DC5;
     const PRIME: u32 = 0x0100_0193;
     let mut h = OFFSET;
     for b in id.as_bytes() {
-        h ^= *b as u32;
+        h ^= u32::from(*b);
         h = h.wrapping_mul(PRIME);
     }
     h
@@ -168,22 +169,17 @@ mod tests {
     fn registry_loads() {
         let registry = RuleRegistry::from_tsv(DEFAULT_RULES).expect("parse");
         assert!(!registry.all().is_empty());
-        let go_rules: Vec<&Rule> = registry.rules_for_lang("go").collect();
-        assert!(!go_rules.is_empty());
+        assert!(registry.rules_for_lang("go").next().is_some());
         assert!(registry.rule("perf_avoid_string_concat_loop").is_some());
     }
 
     #[test]
     fn iterators_are_deterministic() {
         let registry = RuleRegistry::from_tsv(DEFAULT_RULES).expect("parse");
-        let first_run: Vec<String> = registry
-            .rules_for_lang("rust")
-            .map(|rule| rule.id.clone())
-            .collect();
-        let second_run: Vec<String> = registry
-            .rules_for_lang("rust")
-            .map(|rule| rule.id.clone())
-            .collect();
+        let first_run: Vec<String> =
+            registry.rules_for_lang("rust").map(|rule| rule.id.clone()).collect();
+        let second_run: Vec<String> =
+            registry.rules_for_lang("rust").map(|rule| rule.id.clone()).collect();
         assert_eq!(first_run, second_run);
     }
 }

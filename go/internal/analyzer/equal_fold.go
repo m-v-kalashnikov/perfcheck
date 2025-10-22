@@ -5,29 +5,33 @@ import (
 	"go/ast"
 	"go/token"
 
-	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
+
+	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 )
 
 var equalFoldAnalyzer = &analysis.Analyzer{
 	Name:     "perf_equal_fold_compare",
 	Doc:      "reports case-insensitive comparisons built via ToLower/ToUpper",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
-	Run: func(pass *analysis.Pass) (interface{}, error) {
+	Run: func(pass *analysis.Pass) (any, error) {
 		rule, ok := ruleset.MustDefault().RuleByID("perf_equal_fold_compare")
 		if !ok {
 			return nil, fmt.Errorf("rule perf_equal_fold_compare not found")
 		}
 
-		ins, _ := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
-		if ins == nil {
+		insAnalyser, ok := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+		if !ok || insAnalyser == nil {
 			return nil, fmt.Errorf("missing inspector dependency")
 		}
 
-		ins.Preorder([]ast.Node{(*ast.BinaryExpr)(nil)}, func(node ast.Node) {
-			bin := node.(*ast.BinaryExpr)
+		insAnalyser.Preorder([]ast.Node{(*ast.BinaryExpr)(nil)}, func(node ast.Node) {
+			bin, ok := node.(*ast.BinaryExpr)
+			if !ok {
+				return
+			}
 			if bin.Op != token.EQL && bin.Op != token.NEQ {
 				return
 			}

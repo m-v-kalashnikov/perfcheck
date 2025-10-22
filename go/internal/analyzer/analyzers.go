@@ -1,3 +1,4 @@
+// Package analyzer hosts perfcheck-specific static analysis detectors.
 package analyzer
 
 import "golang.org/x/tools/go/analysis"

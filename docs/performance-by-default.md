@@ -190,6 +190,6 @@ func writeBytes(w io.Writer, buf []byte) {
 ```
 
 ## Validation Workflow
-- Run `just go-maintain` to compile the GolangCI-Lint bridge, enforce the Go analyzer suite, confirm `gofmt` cleanliness, verify modules, and ensure `govulncheck ./...` reports no vulnerabilities (first run may download advisory data).
+- Run `just go-maintain` to apply `golangci-lint fmt` (wrapping `gofmt`, `goimports`, `gci`, and `golines`), compile the GolangCI-Lint bridge, enforce the analyzer suite (including `testifylint`, `wastedassign`, and `whitespace`), verify modules, and ensure `govulncheck ./...` reports no vulnerabilities (first run may download advisory data).
 - Run `just rust-maintain` to verify formatting, clippy diagnostics, supply-chain checks, and unused dependency drift (requires installed `cargo-deny`, `cargo-audit`, and a nightly toolchain for `cargo udeps`; keep the RustSec database synced when network access is available).
 - Run `just pre-commit` to execute the lint commands, `go test ./...`, `cargo nextest run`, and `openspec validate --strict` in one pass before submitting changes.

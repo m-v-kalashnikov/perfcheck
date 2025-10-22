@@ -1,0 +1,21 @@
+[formatting]
+# Leave entries ragged so adding/removing keys does not rewrite unrelated lines.
+align_entries = false
+# Expand wide arrays onto multiple lines to avoid horizontal scrolling while keeping short arrays inline.
+array_auto_expand = true
+# Keep spaces around '=' for readability and to mirror upstream TOML examples.
+compact_entries = false
+# Match our Rust formatter width so configs wrap predictably without constant churn.
+column_width = 100
+# Use four-space indentation to align with the rest of the workspace tooling.
+indent_string = "    "
+# Keep tables flush-left so diffs stay focused on content, not indentation moves.
+indent_tables = false
+# Preserve author-chosen array ordering because element order often carries meaning.
+reorder_arrays = false
+# Keep table keys in declared order to respect intent and reduce merge noise.
+reorder_keys = false
+# Leave inline tables in author order for stable diffs and clearer grouping.
+reorder_inline_tables = false
+# Always end files with a newline to play nicely with POSIX tools and linters.
+trailing_newline = true

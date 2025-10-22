@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/tools/go/analysis"
 
 	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
-	"golang.org/x/tools/go/analysis"
 )
 
 func TestSyncPoolPointerAnalyzerFlagsValue(t *testing.T) {
@@ -103,7 +103,12 @@ func runSyncPool(src string) []analysis.Diagnostic {
 		if isPointerLike(argType) {
 			return true
 		}
-		report(&pass, call.Args[0].Pos(), rule, "store pointer types in sync.Pool to avoid interface allocations")
+		report(
+			&pass,
+			call.Args[0].Pos(),
+			rule,
+			"store pointer types in sync.Pool to avoid interface allocations",
+		)
 		return true
 	})
 

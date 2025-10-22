@@ -1,25 +1,65 @@
-version: 2
+version: "2"
 
 run:
   timeout: 5m
   tests: true
   allow-parallel-runners: true
-
-linters-settings:
-  govet:
-    check-shadowing: true
-  staticcheck:
-    checks:
-      - all
+  modules-download-mode: readonly
 
 linters:
   enable:
-    - govet
-    - staticcheck
-    - ineffassign
-    - errcheck
+    - bodyclose
+    - gocritic
+    - prealloc
+    - unconvert
+    - testifylint
+    - wastedassign
+    - whitespace
+  settings:
+    govet:
+      enable:
+        - shadow
+    staticcheck:
+      checks:
+        - all
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+      disabled-checks:
+        - hugeParam # Value semantics are intentional for analyzer configuration structs.
+    errcheck:
+      check-type-assertions: true
+  exclusions:
+    rules:
+      - linters:
+          - gocritic
+        text: "hugeParam" # Documented above; tracked per-check for clarity.
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+    - gci
+    - golines
+  settings:
+    gofmt:
+      rewrite-rules:
+        - pattern: interface{}
+          replacement: any
+    goimports:
+      local-prefixes:
+        - github.com/m-v-kalashnikov/perfcheck
+    gci:
+      custom-order: true
+      sections:
+        - standard
+        - default
+        - prefix(github.com/m-v-kalashnikov/perfcheck)
+    golines:
+      max-len: 120
+      tab-len: 8
 
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-  exclude-use-default: false

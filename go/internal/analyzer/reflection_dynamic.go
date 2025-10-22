@@ -4,17 +4,18 @@ import (
 	"fmt"
 	"go/ast"
 
-	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
+
+	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 )
 
 var reflectionLoopAnalyzer = &analysis.Analyzer{
 	Name:     "perf_reflection_dynamic_loop",
 	Doc:      "reports reflection usage inside hot loops",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
-	Run: func(pass *analysis.Pass) (interface{}, error) {
+	Run: func(pass *analysis.Pass) (any, error) {
 		rule, ok := ruleset.MustDefault().RuleByID("perf_avoid_reflection_dynamic")
 		if !ok {
 			return nil, fmt.Errorf("rule perf_avoid_reflection_dynamic not found")

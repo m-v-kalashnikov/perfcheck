@@ -30,9 +30,9 @@ Cross-language **Performance-by-Default** linting toolkit for Go and Rust. The g
 ## Development Notes
 - Keep rule IDs stable; they double as numeric hashes for hot-path lookups.
 - Update docs/performance-by-default.md when expanding the rule set.
-- Install local tooling before linting: `golangci-lint`, `rustup component add rustfmt clippy`, `rustup toolchain install nightly`, and `cargo install cargo-deny cargo-audit cargo-udeps` (these pull advisory databases on first run).
-- Run `just go-maintain` to build the GolangCI-Lint bridge, execute the Go analyzer suite, confirm `gofmt` cleanliness, verify `go.mod`, and scan with `govulncheck` (first run downloads the Go vulnerability database).
-- Run `just rust-maintain` to apply `cargo fmt --check`, `cargo clippy`, `cargo deny`, `cargo audit`, and `cargo +nightly udeps` in sequence, stopping on the first failure (the deny/audit steps require the RustSec database, so ensure network access when refreshing it).
+- Install local tooling before linting: `golangci-lint`, `goimports`, `taplo` (`cargo install taplo-cli`), `rustup component add rustfmt clippy`, `rustup toolchain install nightly`, and `cargo install cargo-deny cargo-audit cargo-udeps` (these pull advisory databases on first run).
+- Run `just go-maintain` to apply `golangci-lint fmt` (running `gofmt`, `goimports`, `gci`, and `golines` with the configured rewrites), build the GolangCI-Lint bridge, run `golangci-lint run`, execute the perfcheck multichecker, verify `go.mod`, and scan with `govulncheck` (first run downloads the Go vulnerability database).
+- Run `just rust-maintain` to apply `cargo fmt --check`, validate TOML manifests with `taplo format --check --diff`, execute `cargo clippy --all-targets --all-features -- -D warnings`, and run the deny/audit/udeps hygiene checks (deny/audit steps require the RustSec database, so ensure network access when refreshing it).
 - Run `just pre-commit` from the repository root to execute the lint commands, Go tests, Rust tests, and `openspec validate --strict` before submitting changes.
 
 ## Rule Matrix

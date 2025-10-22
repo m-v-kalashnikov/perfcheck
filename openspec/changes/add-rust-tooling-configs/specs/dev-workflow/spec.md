@@ -15,11 +15,11 @@ The developer workflow SHALL version clippy, rustfmt, and Taplo configuration fi
 - **THEN** the Taplo step SHALL execute using `rust/taplo.toml` so configuration files and fixtures stay consistently formatted.
 
 ### Requirement: Go Tooling Configuration Baseline
-The developer workflow SHALL version goimports and GolangCI-Lint configuration files inside the `go/` directory so that import formatting and lint behavior remain stable across contributors and CI.
+The developer workflow SHALL version Go formatting and lint configuration inside the `go/` directory so that import formatting and lint behavior remain stable across contributors and CI.
 
 #### Scenario: Goimports honors repository configuration
 - **WHEN** a contributor formats Go files using the documented goimports command
-- **THEN** goimports SHALL load repository-local settings (for example from `go/.goimports`) to enforce consistent import grouping and local module detection.
+- **THEN** goimports SHALL apply the repository-local import grouping (for example by invoking `goimports -local github.com/m-v-kalashnikov/perfcheck`) so local modules remain grouped consistently.
 
 #### Scenario: GolangCI-Lint honors repository configuration
 - **WHEN** a contributor runs the documented Go lint workflow

@@ -4,9 +4,25 @@ This guide explains how to run perfcheck inside popular lint aggregators for
 Go and Rust projects.
 
 For this repository, the fastest path is to run the bundled commands:
-- `just go-maintain` builds the GolangCI-Lint bridge, runs `golangci-lint run` with the checked-in configuration, executes the perfcheck multichecker, verifies `gofmt`, checks `go.mod`, and runs `govulncheck ./...` (expect the first `govulncheck` run to download vulnerability data).
-- `just rust-maintain` runs `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo deny check`, `cargo audit`, and `cargo +nightly udeps --all-targets` in sequence.
+- `just go-maintain` runs `golangci-lint fmt` (applying `gofmt`, `goimports`, `gci`, and `golines` with the repository settings), builds the GolangCI-Lint bridge, runs `golangci-lint run` with the curated `go/.golangci.yml`, executes the perfcheck multichecker, checks `go.mod`, and runs `govulncheck ./...` (expect the first `govulncheck` run to download vulnerability data).
+- `just rust-maintain` runs `cargo fmt --check`, validates all workspace TOML files with `taplo format --check --diff` using `rust/taplo.toml`, executes `cargo clippy --all-targets --all-features -- -D warnings`, `cargo deny check`, `cargo audit`, and `cargo +nightly udeps --all-targets` in sequence.
 The Rust workflow requires `rustfmt`, `clippy`, `cargo-deny`, `cargo-audit`, and `cargo-udeps` along with a nightly toolchain; the deny/audit steps need the RustSec advisory database to be refreshed when network access is permitted.
+
+## Repository Tooling Configuration
+
+### Rust
+
+- `rust/clippy.toml` documents the raw-string allowance used by our fixtures; lint levels are enforced through crate-level `#![warn(clippy::…)]` attributes in `src/lib.rs` and the executables. Any new `#![allow]` should explain why the rule is waived.
+- `rust/rustfmt.toml` locks edition, width, and import grouping. Run `cargo fmt` to apply it across the workspace.
+- `rust/taplo.toml` keeps TOML manifests deterministic. The `just rust-maintain` recipe calls `taplo format --check --diff` so format changes fail fast.
+
+### Go
+
+- `go/.golangci.yml` enables the performance-focused lint suite (`bodyclose`, `gocritic`, `prealloc`, `unconvert`) and configures `gofmt`, `goimports`, `gci`, and `golines` formatters. Manual runs should mirror CI with:
+  - `goimports -local github.com/m-v-kalashnikov/perfcheck`
+  - `gci write --custom-order --section standard --section default --section 'prefix(github.com/m-v-kalashnikov/perfcheck)' <files>`
+  - `golines --max-len 120 --tab-len 8 <files>`
+  The `gofmt` settings automatically rewrite `interface{}` to `any` so new code adopts modern type aliases by default. `just go-maintain` runs GolangCI-Lint with the repository cache directory so results remain deterministic.
 
 ## GolangCI-Lint
 
@@ -22,7 +38,7 @@ The Rust workflow requires `rustfmt`, `clippy`, `cargo-deny`, `cargo-audit`, and
    ```bash
    ./bin/perfcheck-golangci ./...
    ```
-  The `just go-maintain` recipe automates these steps and adds the formatting, module verification, and `govulncheck` checks when working inside this repository.
+  The `just go-maintain` recipe automates these steps and adds module verification and `govulncheck` when working inside this repository.
 
 ## Clippy
 

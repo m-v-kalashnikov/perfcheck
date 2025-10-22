@@ -49,22 +49,15 @@ go-tools: _go_ensure_tools
 
 # Run Go formatting, linting, analyzers, and vulnerability checks
 go-maintain:
-	@echo "[go] gofmt check"
-	@cd go && set -o pipefail; \
-		fmt_out="$(find . -name '*.go' -not -path './vendor/*' -not -path './bin/*' -print0 | xargs -0 gofmt -l)" || exit 1; \
-		if [ -n "$fmt_out" ]; then \
-			echo "[go] gofmt found unformatted files:"; \
-			printf '%s\n' "$fmt_out"; \
-			echo "run 'gofmt -w' on the listed files"; \
-			exit 1; \
-		fi
+	@echo "[go] golangci-lint fmt"
+	@just _checked_run go 'env GOCACHE="$PWD/.gocache" GOLANGCI_LINT_CACHE="$PWD/.golangci-cache" PATH="./bin:$PATH" golangci-lint fmt --config .golangci.yml ./...'
 	@echo "[go] building perfcheck-golangci bridge"
 	@mkdir -p go/bin
 	@just _checked_run go go build -o bin/perfcheck-golangci ./cmd/perfcheck-golangci
 	@echo "[go] golangci-lint run"
-	@just _checked_run go 'PATH="./bin:$PATH"' golangci-lint run --config .golangci.yml ./...
+	@just _checked_run go 'env GOCACHE="$PWD/.gocache" GOLANGCI_LINT_CACHE="$PWD/.golangci-cache" PATH="./bin:$PATH" golangci-lint run --config .golangci.yml ./...'
 	@echo "[go] perfcheck analyzers"
-	@just _checked_run go ./bin/perfcheck-golangci ./...
+	@just _checked_run go 'env GOCACHE="$PWD/.gocache" go vet -vettool="$(pwd)/bin/perfcheck-golangci" ./...'
 	@echo "[go] go mod verify"
 	@just _checked_run go go mod verify
 	@echo "[go] govulncheck ./..."
@@ -79,6 +72,8 @@ go-test:
 rust-maintain:
 	@echo "[rust] cargo fmt --check"
 	@just _checked_run rust cargo +{{toolchain}} fmt --check
+	@echo "[rust] taplo format --check"
+	@just _checked_run rust 'env TAPLO_CACHE_DIR="$PWD/.taplo-cache" taplo format --check --diff --config taplo.toml Cargo.toml deny.toml rustfmt.toml taplo.toml clippy.toml rust-toolchain.toml'
 	@echo "[rust] cargo clippy --all-targets --all-features -D warnings"
 	@just _checked_run rust cargo +{{toolchain}} clippy --all-targets --all-features -- -D warnings
 	@echo "[rust] cargo deny check"
@@ -94,7 +89,7 @@ rust-test:
 	@just _checked_run rust cargo +{{toolchain}} nextest run
 
 # Run all maintenance and test commands before committing
-pre-commit: go-maintain rust-maintain go-test rust-test
+pre-commit: go-maintain go-test rust-maintain rust-test
 	@echo "[pre-commit] openspec validate --strict"
 	@openspec validate --strict --all
 

@@ -6,17 +6,18 @@ import (
 	"go/token"
 	"go/types"
 
-	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
+
+	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 )
 
 var preallocateCollectionsAnalyzer = &analysis.Analyzer{
 	Name:     "perf_preallocate_collections",
 	Doc:      "reports slice growth in range loops without prior preallocation",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
-	Run: func(pass *analysis.Pass) (interface{}, error) {
+	Run: func(pass *analysis.Pass) (any, error) {
 		rule, ok := ruleset.MustDefault().RuleByID("perf_preallocate_collections")
 		if !ok {
 			return nil, fmt.Errorf("rule perf_preallocate_collections not found")
@@ -55,7 +56,13 @@ func analyzePreallocation(pass *analysis.Pass, body *ast.BlockStmt, rule ruleset
 	scanBlock(pass, body, env, false, rule)
 }
 
-func scanBlock(pass *analysis.Pass, block *ast.BlockStmt, reserved map[string]bool, insideLoop bool, rule ruleset.Rule) {
+func scanBlock(
+	pass *analysis.Pass,
+	block *ast.BlockStmt,
+	reserved map[string]bool,
+	insideLoop bool,
+	rule ruleset.Rule,
+) {
 	if block == nil {
 		return
 	}

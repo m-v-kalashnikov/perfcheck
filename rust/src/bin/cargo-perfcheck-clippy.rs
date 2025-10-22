@@ -1,8 +1,12 @@
-use std::env;
-use std::io;
-use std::io::ErrorKind;
-use std::path::PathBuf;
-use std::process::{self, Command, ExitStatus};
+#![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
+#![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::module_name_repetitions)]
+
+use std::{
+    env, io,
+    io::ErrorKind,
+    path::PathBuf,
+    process::{self, Command, ExitStatus},
+};
 
 fn main() {
     if let Err(code) = run() {
@@ -14,12 +18,9 @@ fn run() -> Result<(), i32> {
     let args: Vec<String> = env::args().skip(1).collect();
     let (clippy_args, perfcheck_target) = split_args(args);
 
-    let clippy_status = Command::new("cargo")
-        .arg("clippy")
-        .args(&clippy_args)
-        .status()
-        .map_err(|err| {
-            eprintln!("failed to invoke cargo clippy: {}", err);
+    let clippy_status =
+        Command::new("cargo").arg("clippy").args(&clippy_args).status().map_err(|err| {
+            eprintln!("failed to invoke cargo clippy: {err}");
             2
         })?;
 
@@ -27,12 +28,11 @@ fn run() -> Result<(), i32> {
         return Err(clippy_status.code().unwrap_or(1));
     }
 
-    let target = perfcheck_target
-        .or_else(|| manifest_dir(&clippy_args))
-        .unwrap_or_else(|| ".".to_owned());
+    let target =
+        perfcheck_target.or_else(|| manifest_dir(&clippy_args)).unwrap_or_else(|| ".".to_owned());
 
     let perfcheck_status = run_perfcheck(&target).map_err(|err| {
-        eprintln!("failed to run perfcheck: {}", err);
+        eprintln!("failed to run perfcheck: {err}");
         2
     })?;
 

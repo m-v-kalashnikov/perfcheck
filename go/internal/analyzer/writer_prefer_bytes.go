@@ -5,29 +5,33 @@ import (
 	"go/ast"
 	"go/types"
 
-	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
+
+	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 )
 
 var writerPreferBytesAnalyzer = &analysis.Analyzer{
 	Name:     "perf_writer_prefer_bytes",
 	Doc:      "reports string conversions when writing byte slices",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
-	Run: func(pass *analysis.Pass) (interface{}, error) {
+	Run: func(pass *analysis.Pass) (any, error) {
 		rule, ok := ruleset.MustDefault().RuleByID("perf_writer_prefer_bytes")
 		if !ok {
 			return nil, fmt.Errorf("rule perf_writer_prefer_bytes not found")
 		}
 
-		ins, _ := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
-		if ins == nil {
+		insAnalyser, ok := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+		if !ok || insAnalyser == nil {
 			return nil, fmt.Errorf("missing inspector dependency")
 		}
 
-		ins.Preorder([]ast.Node{(*ast.CallExpr)(nil)}, func(node ast.Node) {
-			call := node.(*ast.CallExpr)
+		insAnalyser.Preorder([]ast.Node{(*ast.CallExpr)(nil)}, func(node ast.Node) {
+			call, ok := node.(*ast.CallExpr)
+			if !ok {
+				return
+			}
 			sel, ok := call.Fun.(*ast.SelectorExpr)
 			if !ok || sel.Sel == nil {
 				return
@@ -57,7 +61,12 @@ var writerPreferBytesAnalyzer = &analysis.Analyzer{
 				return
 			}
 
-			report(pass, arg.Pos(), rule, "avoid converting []byte to string when writing; use byte-oriented writes")
+			report(
+				pass,
+				arg.Pos(),
+				rule,
+				"avoid converting []byte to string when writing; use byte-oriented writes",
+			)
 		})
 
 		return nil, nil
@@ -84,7 +93,8 @@ func isStringConversion(info *types.Info, expr ast.Expr) bool {
 		return false
 	}
 	if slice, ok := argType.Underlying().(*types.Slice); ok {
-		if elem, ok := slice.Elem().(*types.Basic); ok && (elem.Kind() == types.Byte || elem.Kind() == types.Uint8 || elem.Kind() == types.Int32 || elem.Kind() == types.Rune) {
+		if elem, ok := slice.Elem().(*types.Basic); ok &&
+			(elem.Kind() == types.Byte || elem.Kind() == types.Uint8 || elem.Kind() == types.Int32 || elem.Kind() == types.Rune) {
 			return true
 		}
 	}

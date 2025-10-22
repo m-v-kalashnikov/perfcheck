@@ -6,17 +6,18 @@ import (
 	"go/token"
 	"go/types"
 
-	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
+
+	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 )
 
 var stringConcatLoopAnalyzer = &analysis.Analyzer{
 	Name:     "perf_string_concat_loop",
 	Doc:      "reports string concatenation inside loops",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
-	Run: func(pass *analysis.Pass) (interface{}, error) {
+	Run: func(pass *analysis.Pass) (any, error) {
 		rule, ok := ruleset.MustDefault().RuleByID("perf_avoid_string_concat_loop")
 		if !ok {
 			return nil, fmt.Errorf("rule perf_avoid_string_concat_loop not found")
@@ -76,7 +77,12 @@ func checkConcatBody(pass *analysis.Pass, body *ast.BlockStmt, rule ruleset.Rule
 				return true
 			}
 			if exprEqual(assign.Lhs[0], bin.X) {
-				report(pass, assign.Pos(), rule, "string concatenation using '=', consider strings.Builder")
+				report(
+					pass,
+					assign.Pos(),
+					rule,
+					"string concatenation using '=', consider strings.Builder",
+				)
 			}
 		}
 

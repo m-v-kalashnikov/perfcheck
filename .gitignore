@@ -5,5 +5,8 @@
 /vendor/
 /**/*.exe
 /rust/target/
+/rust/.taplo-cache/
 /go/bin/
+/go/.gocache/
+/go/.golangci-cache/
 /go/.govulncache/

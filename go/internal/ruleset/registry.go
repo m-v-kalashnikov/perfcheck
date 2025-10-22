@@ -1,3 +1,4 @@
+// Package ruleset loads and indexes perfcheck rule metadata for analyzers.
 package ruleset
 
 import (

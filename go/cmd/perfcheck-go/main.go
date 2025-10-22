@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/m-v-kalashnikov/perfcheck/go/internal/analyzer"
 	"golang.org/x/tools/go/analysis/unitchecker"
+
+	"github.com/m-v-kalashnikov/perfcheck/go/internal/analyzer"
 )
 
 func main() {

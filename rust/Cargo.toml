@@ -3,5 +3,10 @@ name = "perfcheck-lint"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
+description = "Rust linting bridge for perfcheck's performance-by-default analyzers"
+repository = "https://github.com/m-v-kalashnikov/perfcheck"
+readme = "../README.md"
+keywords = ["performance", "lint", "static-analysis"]
+categories = ["development-tools::profiling", "development-tools::testing"]
 
 [dependencies]

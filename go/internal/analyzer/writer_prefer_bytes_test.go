@@ -90,7 +90,7 @@ func runWriterPreferBytes(src string) []analysis.Diagnostic {
 		Report: func(d analysis.Diagnostic) {
 			diags = append(diags, d)
 		},
-		ResultOf: map[*analysis.Analyzer]interface{}{
+		ResultOf: map[*analysis.Analyzer]any{
 			inspect.Analyzer: insp,
 		},
 	}

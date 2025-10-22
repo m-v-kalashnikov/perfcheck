@@ -5,29 +5,33 @@ import (
 	"go/ast"
 	"go/types"
 
-	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
+
+	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 )
 
 var syncPoolPointerAnalyzer = &analysis.Analyzer{
 	Name:     "perf_syncpool_store_pointers",
 	Doc:      "reports storing non-pointer values in sync.Pool",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
-	Run: func(pass *analysis.Pass) (interface{}, error) {
+	Run: func(pass *analysis.Pass) (any, error) {
 		rule, ok := ruleset.MustDefault().RuleByID("perf_syncpool_store_pointers")
 		if !ok {
 			return nil, fmt.Errorf("rule perf_syncpool_store_pointers not found")
 		}
 
-		ins, _ := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
-		if ins == nil {
+		insAnalyser, ok := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+		if !ok || insAnalyser == nil {
 			return nil, fmt.Errorf("missing inspector dependency")
 		}
 
-		ins.Preorder([]ast.Node{(*ast.CallExpr)(nil)}, func(node ast.Node) {
-			call := node.(*ast.CallExpr)
+		insAnalyser.Preorder([]ast.Node{(*ast.CallExpr)(nil)}, func(node ast.Node) {
+			call, ok := node.(*ast.CallExpr)
+			if !ok {
+				return
+			}
 			if len(call.Args) != 1 {
 				return
 			}
@@ -48,7 +52,12 @@ var syncPoolPointerAnalyzer = &analysis.Analyzer{
 			if isPointerLike(argType) {
 				return
 			}
-			report(pass, call.Args[0].Pos(), rule, "store pointer types in sync.Pool to avoid interface allocations")
+			report(
+				pass,
+				call.Args[0].Pos(),
+				rule,
+				"store pointer types in sync.Pool to avoid interface allocations",
+			)
 		})
 
 		return nil, nil

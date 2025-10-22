@@ -5,17 +5,18 @@ import (
 	"go/ast"
 	"go/types"
 
-	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
+
+	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 )
 
 var regexCompileLoopAnalyzer = &analysis.Analyzer{
 	Name:     "perf_regex_compile_loop",
 	Doc:      "reports regexp compilation executed inside loops",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
-	Run: func(pass *analysis.Pass) (interface{}, error) {
+	Run: func(pass *analysis.Pass) (any, error) {
 		rule, ok := ruleset.MustDefault().RuleByID("perf_regex_compile_once")
 		if !ok {
 			return nil, fmt.Errorf("rule perf_regex_compile_once not found")

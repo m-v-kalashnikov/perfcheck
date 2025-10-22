@@ -1,6 +1,8 @@
-use std::collections::{HashMap, HashSet};
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    path::{Path, PathBuf},
+};
 
 use crate::rules::{Rule, RuleRegistry};
 
@@ -14,12 +16,19 @@ pub struct Diagnostic {
     pub column: usize,
 }
 
+/// Traverses the provided path and collects diagnostics for every Rust file
+/// encountered.
+///
+/// # Errors
+/// Returns an [`std::io::Error`] when filesystem metadata or file contents
+/// cannot be read.
 pub fn lint_path(path: &Path, registry: &'static RuleRegistry) -> std::io::Result<Vec<Diagnostic>> {
     let mut diagnostics = Vec::new();
     walk(path, registry, &mut diagnostics)?;
     Ok(diagnostics)
 }
 
+#[must_use]
 pub fn lint_source(source: &str, path: &Path, registry: &'static RuleRegistry) -> Vec<Diagnostic> {
     let mut ctx = FileContext::new(path, registry);
     ctx.process(source);
@@ -91,9 +100,8 @@ impl<'a> FileContext<'a> {
         let dyn_rule = registry
             .rule("perf_avoid_reflection_dynamic")
             .expect("perf_avoid_reflection_dynamic rule missing");
-        let concurrency_rule = registry
-            .rule("perf_bound_concurrency")
-            .expect("perf_bound_concurrency rule missing");
+        let concurrency_rule =
+            registry.rule("perf_bound_concurrency").expect("perf_bound_concurrency rule missing");
         let borrow_rule = registry
             .rule("perf_borrow_instead_of_clone")
             .expect("perf_borrow_instead_of_clone rule missing");
@@ -134,17 +142,16 @@ impl<'a> FileContext<'a> {
                 }
             }
 
-            if !self.loops.is_empty() {
+            let in_loop = !self.loops.is_empty();
+            if in_loop {
                 self.detect_string_concat(raw_line, line_no);
                 self.detect_vector_push(raw_line, line_no);
                 self.detect_dynamic_dispatch(raw_line, line_no);
                 self.detect_spawn(raw_line, line_no);
                 self.detect_clone(raw_line, line_no);
-                self.track_vector_reserve(raw_line);
-            } else {
-                self.track_vector_reserve(raw_line);
             }
 
+            self.track_vector_reserve(raw_line);
             self.process_braces(raw_line);
         }
     }
@@ -328,12 +335,7 @@ impl<'a> FileContext<'a> {
         if trimmed.is_empty() || trimmed.starts_with("//") {
             return;
         }
-        let patterns = [
-            "::spawn(",
-            ".spawn(",
-            "::spawn_blocking(",
-            ".spawn_blocking(",
-        ];
+        let patterns = ["::spawn(", ".spawn(", "::spawn_blocking(", ".spawn_blocking("];
         if patterns.iter().any(|p| trimmed.contains(p)) {
             self.reported_spawn_lines.insert(line_no);
             self.push_diag(
@@ -387,8 +389,7 @@ impl<'a> FileContext<'a> {
     }
 
     fn is_string_var(&self, name: &str) -> bool {
-        self.lookup_var(name)
-            .is_some_and(|info| matches!(info, VarInfo::String))
+        self.lookup_var(name).is_some_and(|info| matches!(info, VarInfo::String))
     }
 
     fn is_vector_without_capacity(&self, name: &str) -> bool {
@@ -397,8 +398,7 @@ impl<'a> FileContext<'a> {
     }
 
     fn is_dynamic_var(&self, name: &str) -> bool {
-        self.lookup_var(name)
-            .is_some_and(|info| matches!(info, VarInfo::DynamicDispatch))
+        self.lookup_var(name).is_some_and(|info| matches!(info, VarInfo::DynamicDispatch))
     }
 
     fn mark_vector_reserved(&mut self, name: &str) {
@@ -423,7 +423,7 @@ impl<'a> FileContext<'a> {
         self.diagnostics.push(Diagnostic {
             rule_id: rule.id.clone(),
             severity: rule.severity.clone(),
-            message: format!("{} (\"{}\")", detail, subject),
+            message: format!("{detail} (\"{subject}\")"),
             path: self.path.to_path_buf(),
             line,
             column,
@@ -440,9 +440,9 @@ fn parse_variable_declaration(line: &str) -> Option<(String, VarInfo)> {
     let name = extract_identifier(left)?;
     let init = right.trim();
 
-    if init.contains("String::new()")
-        || init.contains("String::from(")
-        || init.contains("String::with_capacity")
+    if init.contains("String::new()") ||
+        init.contains("String::from(") ||
+        init.contains("String::with_capacity")
     {
         return Some((name, VarInfo::String));
     }
@@ -490,27 +490,28 @@ fn split_assignment(line: &str) -> Option<(&str, &str)> {
 
 fn contains_trait_object(text: &str) -> bool {
     let lower = text.to_ascii_lowercase();
-    lower.contains("box<dyn")
-        || lower.contains("rc<dyn")
-        || lower.contains("arc<dyn")
-        || lower.contains("&dyn")
-        || lower.contains("dyn ")
-        || lower.contains("dyn>")
+    lower.contains("box<dyn") ||
+        lower.contains("rc<dyn") ||
+        lower.contains("arc<dyn") ||
+        lower.contains("&dyn") ||
+        lower.contains("dyn ") ||
+        lower.contains("dyn>")
 }
 
-fn is_ident_start(ch: u8) -> bool {
+const fn is_ident_start(ch: u8) -> bool {
     ch == b'_' || ch.is_ascii_alphabetic()
 }
 
-fn is_ident_char(ch: u8) -> bool {
+const fn is_ident_char(ch: u8) -> bool {
     ch == b'_' || ch.is_ascii_alphanumeric()
 }
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use super::*;
     use crate::registry;
-    use std::collections::HashSet;
 
     const TEST_FILE: &str = "test.rs";
 

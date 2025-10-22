@@ -10,9 +10,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/tools/go/analysis"
 
 	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
-	"golang.org/x/tools/go/analysis"
 )
 
 func TestStringConcatLoopAnalyzerFindsViolation(t *testing.T) {

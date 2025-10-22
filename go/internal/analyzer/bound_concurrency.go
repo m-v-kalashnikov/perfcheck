@@ -4,17 +4,18 @@ import (
 	"fmt"
 	"go/ast"
 
-	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
+
+	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 )
 
 var boundConcurrencyAnalyzer = &analysis.Analyzer{
 	Name:     "perf_bound_concurrency",
 	Doc:      "reports unbounded goroutine creation inside loops",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
-	Run: func(pass *analysis.Pass) (interface{}, error) {
+	Run: func(pass *analysis.Pass) (any, error) {
 		rule, ok := ruleset.MustDefault().RuleByID("perf_bound_concurrency")
 		if !ok {
 			return nil, fmt.Errorf("rule perf_bound_concurrency not found")

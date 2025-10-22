@@ -5,7 +5,7 @@ Current Rust and Go maintenance workflows rely on a mix of tool defaults and ad-
 - Add `rust/clippy.toml` that elevates the performance-oriented lint groups we rely on and documents any intentional allow list.
 - Add `rust/rustfmt.toml` to lock formatting behavior (module ordering, line width, edition) for the Rust workspace.
 - Add `rust/taplo.toml` so TOML formatting stays stable across contributors and can back future automation.
-- Add `go/.goimports` (or the supported config file for goimports) so import grouping and local path detection stay consistent across developers.
+- Encode goimports local prefix configuration so import grouping and local path detection stay consistent across developers (stored under `formatters.settings.goimports.local-prefixes` inside `go/.golangci.yml`).
 - Update `go/.golangci.yml` to enforce the agreed performance-focused lint set and document any local-disable rationale.
 - Document the configuration layout in the Rust tooling docs so contributors understand how to tweak rules safely.
 - Update Go tooling documentation to describe how goimports and GolangCI-Lint consume the repository configs.

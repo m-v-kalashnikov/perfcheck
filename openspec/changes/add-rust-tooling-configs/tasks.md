@@ -1,8 +1,8 @@
-- [ ] 1. Review existing Rust and Go lint/format defaults and decide on performance-first settings to encode in the new configs (document any intentional allows).
-- [ ] 2. Add `rust/clippy.toml` with the agreed deny/warn set and inline comments for noteworthy deviations.
-- [ ] 3. Add `rust/rustfmt.toml` that locks formatting style (edition, imports, width) for the Rust workspace.
-- [ ] 4. Add `rust/taplo.toml` covering TOML formatting/linting rules used by the workspace and fixtures.
-- [ ] 5. Add the repository goimports configuration (`go/.goimports` or equivalent) to enforce local import grouping that matches our performance guidance.
-- [ ] 6. Update `go/.golangci.yml` to reflect the refined lint set and annotate intentional lints that remain disabled.
-- [ ] 7. Update the developer docs (`README.md` or `docs/integrations.md`) to point at both Rust and Go configs and explain how commands consume them.
-- [ ] 8. Validate the change by running `just rust-maintain` (which now includes the Taplo check), `just go-maintain`, and a dry-run goimports check to confirm the new configs are honored with a clean tree.
+- [x] 1. Review existing Rust and Go lint/format defaults and decide on performance-first settings to encode in the new configs (document any intentional allows).
+- [x] 2. Add `rust/clippy.toml` with the agreed deny/warn set and inline comments for noteworthy deviations.
+- [x] 3. Add `rust/rustfmt.toml` that locks formatting style (edition, imports, width) for the Rust workspace.
+- [x] 4. Add `rust/taplo.toml` covering TOML formatting/linting rules used by the workspace and fixtures.
+- [x] 5. Add the repository goimports configuration (now stored under `formatters.settings.goimports.local-prefixes` in `go/.golangci.yml`) to enforce local import grouping that matches our performance guidance.
+- [x] 6. Update `go/.golangci.yml` to reflect the refined lint set and annotate intentional lints that remain disabled.
+- [x] 7. Update the developer docs (`README.md` or `docs/integrations.md`) to point at both Rust and Go configs and explain how commands consume them.
+- [x] 8. Validate the change by running `just rust-maintain` (which now includes the Taplo check), `just go-maintain`, and a dry-run goimports check to confirm the new configs are honored with a clean tree. *(Taplo currently panics on macOS `system-configuration` inside our sandbox and `govulncheck` needs network access; both commands fail for those external reasons. goimports dry-run succeeded.)*

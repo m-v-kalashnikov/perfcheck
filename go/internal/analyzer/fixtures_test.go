@@ -81,7 +81,14 @@ func TestViolationsFixtureTriggersAllRules(t *testing.T) {
 	}
 }
 
-func runAnalyzerOnFixture(t *testing.T, analyzer *analysis.Analyzer, fset *token.FileSet, file *ast.File, info *types.Info, pkg *types.Package) []analysis.Diagnostic {
+func runAnalyzerOnFixture(
+	t *testing.T,
+	analyzer *analysis.Analyzer,
+	fset *token.FileSet,
+	file *ast.File,
+	info *types.Info,
+	pkg *types.Package,
+) []analysis.Diagnostic {
 	t.Helper()
 
 	var diags []analysis.Diagnostic
@@ -92,7 +99,7 @@ func runAnalyzerOnFixture(t *testing.T, analyzer *analysis.Analyzer, fset *token
 		Pkg:        pkg,
 		TypesInfo:  info,
 		TypesSizes: types.SizesFor("gc", runtime.GOARCH),
-		ResultOf:   make(map[*analysis.Analyzer]interface{}),
+		ResultOf:   make(map[*analysis.Analyzer]any),
 		Report: func(d analysis.Diagnostic) {
 			diags = append(diags, d)
 		},

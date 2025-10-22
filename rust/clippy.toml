@@ -1,0 +1,10 @@
+### Clippy lint configuration for the Rust workspace.
+# Lint levels are enforced via crate-level attributes so that every target
+# (library and binaries) shares the same settings.
+
+# Allow a single hash on raw string literals; our fixture code snippets embed
+# quotes and stay more readable with `r#""#` literals.
+allow-one-hash-in-raw-strings = true
+
+# Enforce consistent import hygiene by flagging every wildcard import usage.
+warn-on-all-wildcard-imports = true
