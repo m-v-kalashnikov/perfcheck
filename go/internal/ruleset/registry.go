@@ -78,7 +78,7 @@ func MustDefault() *Registry {
 
 func buildRegistry(rules []Rule) *Registry {
 	byID := make(map[string]Rule, len(rules))
-	byLang := make(map[string][]Rule, 4)
+	langCounts := make(map[string]int)
 	all := make([]Rule, 0, len(rules))
 
 	for _, rule := range rules {
@@ -97,12 +97,26 @@ func buildRegistry(rules []Rule) *Registry {
 				continue
 			}
 			normalizedLangs = append(normalizedLangs, lang)
-			byLang[lang] = append(byLang[lang], rule)
+			langCounts[lang]++
 		}
 		rule.Langs = normalizedLangs
 
 		byID[rule.ID] = rule
 		all = append(all, rule)
+	}
+
+	byLang := make(map[string][]Rule, len(langCounts))
+	langWriteIdx := make(map[string]int, len(langCounts))
+	for lang, count := range langCounts {
+		byLang[lang] = make([]Rule, count)
+	}
+
+	for _, rule := range all {
+		for _, lang := range rule.Langs {
+			idx := langWriteIdx[lang]
+			byLang[lang][idx] = rule
+			langWriteIdx[lang] = idx + 1
+		}
 	}
 
 	sort.Slice(all, func(i, j int) bool { return all[i].ID < all[j].ID })

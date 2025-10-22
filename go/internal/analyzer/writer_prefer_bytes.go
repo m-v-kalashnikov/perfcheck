@@ -5,7 +5,7 @@ import (
 	"go/ast"
 	"go/types"
 
-	"github.com/yourname/perfcheck/go/internal/ruleset"
+	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -33,21 +33,22 @@ var writerPreferBytesAnalyzer = &analysis.Analyzer{
 				return
 			}
 			name := sel.Sel.Name
-			argIdx := -1
-
+			var arg ast.Expr
 			switch name {
 			case "WriteString":
-				argIdx = len(call.Args) - 1
+				if len(call.Args) == 0 {
+					return
+				}
+				arg = call.Args[len(call.Args)-1]
 			case "Write":
-				argIdx = 0
+				if len(call.Args) == 0 {
+					return
+				}
+				arg = call.Args[0]
 			default:
 				return
 			}
 
-			if argIdx < 0 || len(call.Args) == 0 || len(call.Args) <= argIdx {
-				return
-			}
-			arg := call.Args[argIdx]
 			if !isStringConversion(pass.TypesInfo, arg) {
 				return
 			}

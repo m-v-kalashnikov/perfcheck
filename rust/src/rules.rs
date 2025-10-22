@@ -92,10 +92,7 @@ impl RuleRegistry {
         for (idx, rule) in all.iter().enumerate() {
             by_id.insert(rule.id.clone(), idx);
             for lang in &rule.langs {
-                by_lang
-                    .entry(lang.clone())
-                    .or_insert_with(Vec::new)
-                    .push(idx);
+                by_lang.entry(lang.clone()).or_default().push(idx);
             }
         }
 

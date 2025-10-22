@@ -31,13 +31,13 @@ fn walk(
     registry: &'static RuleRegistry,
     acc: &mut Vec<Diagnostic>,
 ) -> std::io::Result<()> {
-    if path.file_name().map_or(false, |name| name == "target") {
+    if path.file_name().is_some_and(|name| name == "target") {
         return Ok(());
     }
 
     let metadata = fs::metadata(path)?;
     if metadata.is_file() {
-        if path.extension().map_or(false, |ext| ext == "rs") {
+        if path.extension().is_some_and(|ext| ext == "rs") {
             let source = fs::read_to_string(path)?;
             acc.extend(lint_source(&source, path, registry));
         }
@@ -184,7 +184,7 @@ impl<'a> FileContext<'a> {
                     line_no,
                     idx + 1,
                     left,
-                    &self.string_rule,
+                    self.string_rule,
                     "string concatenation in loop",
                 );
             }
@@ -202,7 +202,7 @@ impl<'a> FileContext<'a> {
                     line_no,
                     raw_line.find('=').unwrap_or(0) + 1,
                     lhs_trim,
-                    &self.string_rule,
+                    self.string_rule,
                     "string concatenation in loop",
                 );
             }
@@ -219,7 +219,7 @@ impl<'a> FileContext<'a> {
                         line_no,
                         idx + 1,
                         var,
-                        &self.vec_rule,
+                        self.vec_rule,
                         "vector push without reserved capacity inside loop",
                     );
                 }
@@ -313,7 +313,7 @@ impl<'a> FileContext<'a> {
                 line_no,
                 dot_idx + 1,
                 ident,
-                &self.dyn_rule,
+                self.dyn_rule,
                 "dynamic dispatch inside loop",
             );
             return;
@@ -340,7 +340,7 @@ impl<'a> FileContext<'a> {
                 line_no,
                 raw_line.find("spawn").unwrap_or(1),
                 trimmed,
-                &self.concurrency_rule,
+                self.concurrency_rule,
                 "spawn inside loop without concurrency bounds",
             );
         }
@@ -377,7 +377,7 @@ impl<'a> FileContext<'a> {
                     line_no,
                     start + 1,
                     raw_line[cursor..start].trim(),
-                    &self.borrow_rule,
+                    self.borrow_rule,
                     "clone inside loop; prefer borrowing",
                 );
                 return;
@@ -388,18 +388,17 @@ impl<'a> FileContext<'a> {
 
     fn is_string_var(&self, name: &str) -> bool {
         self.lookup_var(name)
-            .map_or(false, |info| matches!(info, VarInfo::String))
+            .is_some_and(|info| matches!(info, VarInfo::String))
     }
 
     fn is_vector_without_capacity(&self, name: &str) -> bool {
-        self.lookup_var(name).map_or(false, |info| {
-            matches!(info, VarInfo::Vector { reserved: false })
-        })
+        self.lookup_var(name)
+            .is_some_and(|info| matches!(info, VarInfo::Vector { reserved: false }))
     }
 
     fn is_dynamic_var(&self, name: &str) -> bool {
         self.lookup_var(name)
-            .map_or(false, |info| matches!(info, VarInfo::DynamicDispatch))
+            .is_some_and(|info| matches!(info, VarInfo::DynamicDispatch))
     }
 
     fn mark_vector_reserved(&mut self, name: &str) {

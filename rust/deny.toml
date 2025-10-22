@@ -1,0 +1,28 @@
+[graph]
+all-features = true
+targets = [
+    { triple = "x86_64-unknown-linux-gnu" },
+]
+
+[advisories]
+ignore = []
+db-path = "target/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db.git"]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+deny = []
+skip = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+
+[licenses]
+allow = [
+    "MIT",
+]
+confidence-threshold = 0.7
+exceptions = []

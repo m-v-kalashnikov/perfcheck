@@ -190,4 +190,6 @@ func writeBytes(w io.Writer, buf []byte) {
 ```
 
 ## Validation Workflow
-- Run `just smoke` to execute `go test ./...`, `cargo test`, and `openspec validate --strict` in one pass before submitting changes.
+- Run `just lint-go` to compile the GolangCI-Lint bridge and enforce the Go analyzer suite.
+- Run `just maintain-rust` to verify formatting, clippy diagnostics, supply-chain checks, and unused dependency drift (requires installed `cargo-deny`, `cargo-audit`, and a nightly toolchain for `cargo udeps`; keep the RustSec database synced when network access is available).
+- Run `just smoke` to execute the lint commands, `go test ./...`, `cargo nextest run`, and `openspec validate --strict` in one pass before submitting changes.

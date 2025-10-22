@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/yourname/perfcheck/go/internal/analyzer"
+	"github.com/m-v-kalashnikov/perfcheck/go/internal/analyzer"
 	"golang.org/x/tools/go/analysis/unitchecker"
 )
 

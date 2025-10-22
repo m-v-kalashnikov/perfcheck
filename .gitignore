@@ -5,3 +5,4 @@
 /vendor/
 /**/*.exe
 /rust/target/
+/go/bin/

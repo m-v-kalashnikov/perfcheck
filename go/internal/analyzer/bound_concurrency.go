@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 
-	"github.com/yourname/perfcheck/go/internal/ruleset"
+	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"

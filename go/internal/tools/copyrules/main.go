@@ -22,7 +22,11 @@ func main() {
 	if err != nil {
 		exitErr(fmt.Errorf("open source: %w", err))
 	}
-	defer in.Close()
+	defer func() {
+		if cerr := in.Close(); cerr != nil {
+			exitErr(fmt.Errorf("close source: %w", cerr))
+		}
+	}()
 
 	if err := os.MkdirAll(filepath.Dir(*dst), 0o755); err != nil {
 		exitErr(fmt.Errorf("create destination dir: %w", err))
@@ -32,7 +36,11 @@ func main() {
 	if err != nil {
 		exitErr(fmt.Errorf("create destination: %w", err))
 	}
-	defer out.Close()
+	defer func() {
+		if cerr := out.Close(); cerr != nil {
+			exitErr(fmt.Errorf("close destination: %w", cerr))
+		}
+	}()
 
 	if _, err := io.Copy(out, in); err != nil {
 		exitErr(fmt.Errorf("copy data: %w", err))

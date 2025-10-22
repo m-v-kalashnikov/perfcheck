@@ -3,6 +3,11 @@
 This guide explains how to run perfcheck inside popular lint aggregators for
 Go and Rust projects.
 
+For this repository, the fastest path is to run the bundled commands:
+- `just lint-go` builds the GolangCI-Lint bridge, runs `golangci-lint run` with the checked-in configuration, and then executes the perfcheck multichecker across the Go sources.
+- `just maintain-rust` runs `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo deny check`, `cargo audit`, and `cargo +nightly udeps --all-targets` in sequence.
+The Rust workflow requires `rustfmt`, `clippy`, `cargo-deny`, `cargo-audit`, and `cargo-udeps` along with a nightly toolchain; the deny/audit steps need the RustSec advisory database to be refreshed when network access is permitted.
+
 ## GolangCI-Lint
 
 1. Build the multichecker binary:
@@ -12,24 +17,12 @@ Go and Rust projects.
    ```
    Keep the resulting `perfcheck-golangci` binary somewhere on your `PATH` (for
    example `go/bin`).
-2. Configure GolangCI-Lint to treat perfcheck as a custom external linter by
-   adding the snippet below to `.golangci.yml`:
-   ```yaml
-   linters-settings:
-     custom:
-       perfcheck:
-         cmd: perfcheck-golangci ./...
-         description: Performance-by-default rules from perfcheck
-         format: '{path}:{line}:{column}: {message}'
-
-   linters:
-     enable:
-       - custom-perfcheck
+2. Run `golangci-lint run` as usual using `go/.golangci.yml`; this covers the standard static analyzers.
+3. Execute the perfcheck bridge separately to surface performance violations:
+   ```bash
+   ./bin/perfcheck-golangci ./...
    ```
-   The multichecker emits diagnostics as `path:line:column [rule] message`, so
-   GolangCI-Lint can parse them with the provided `format`.
-3. Run `golangci-lint run` as usual; perfcheck violations now show up alongside
-   built-in analyzers.
+   The `just lint-go` recipe automates both steps when working inside this repository.
 
 ## Clippy
 

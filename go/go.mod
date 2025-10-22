@@ -1,4 +1,4 @@
-module github.com/yourname/perfcheck/go
+module github.com/m-v-kalashnikov/perfcheck/go
 
 go 1.25.1
 

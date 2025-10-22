@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 
-	"github.com/yourname/perfcheck/go/internal/ruleset"
+	"github.com/m-v-kalashnikov/perfcheck/go/internal/ruleset"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -61,9 +61,26 @@ func checkReflectionBody(pass *analysis.Pass, body *ast.BlockStmt, rule ruleset.
 			if _, ok := expr.Type.(*ast.InterfaceType); ok {
 				return true
 			}
+			if isGoASTType(expr.Type) {
+				return true
+			}
 			report(pass, expr.Pos(), rule, "type assertion inside loop triggers dynamic dispatch")
 			return false
 		}
 		return true
 	})
+}
+
+func isGoASTType(expr ast.Expr) bool {
+	switch t := expr.(type) {
+	case *ast.StarExpr:
+		return isGoASTType(t.X)
+	case *ast.SelectorExpr:
+		if pkgIdent, ok := t.X.(*ast.Ident); ok && pkgIdent.Name == "ast" {
+			return true
+		}
+	case *ast.Ident:
+		return t.Name == "ast"
+	}
+	return false
 }
