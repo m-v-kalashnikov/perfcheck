@@ -104,11 +104,3 @@ func exprEqual(a, b ast.Expr) bool {
 	}
 	return types.ExprString(a) == types.ExprString(b)
 }
-
-func report(pass *analysis.Pass, pos token.Pos, rule ruleset.Rule, msg string) {
-	pass.Report(analysis.Diagnostic{
-		Pos:      pos,
-		Message:  fmt.Sprintf("[%s] %s", rule.ID, msg),
-		Category: rule.Category,
-	})
-}

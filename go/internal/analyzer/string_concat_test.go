@@ -30,6 +30,8 @@ func build(items []string) string {
 	diags := runConcat(src)
 	require.Len(t, diags, 1)
 	require.True(t, containsRule(diags, "perf_avoid_string_concat_loop"))
+	require.Contains(t, diags[0].Message, "Why:")
+	require.Contains(t, diags[0].Message, "Fix:")
 }
 
 func TestStringConcatLoopAnalyzerIgnoresBuilder(t *testing.T) {

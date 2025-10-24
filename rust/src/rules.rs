@@ -15,6 +15,8 @@ pub struct Rule {
     pub description: String,
     pub category: String,
     pub severity: String,
+    pub problem_summary: String,
+    pub fix_hint: String,
     pub code: u32,
 }
 
@@ -50,7 +52,7 @@ impl RuleRegistry {
             }
 
             let parts: Vec<&str> = line.split('\t').collect();
-            if parts.len() != 5 {
+            if parts.len() != 7 {
                 return Err(format!("invalid field count on line {}", line_idx + 1));
             }
 
@@ -66,12 +68,20 @@ impl RuleRegistry {
                 })
                 .collect::<Vec<_>>();
 
+            let problem_summary = parts[5].trim();
+            let fix_hint = parts[6].trim();
+            if problem_summary.is_empty() || fix_hint.is_empty() {
+                return Err(format!("missing guidance fields on line {}", line_idx + 1));
+            }
+
             let mut rule = Rule {
                 id: parts[0].trim().to_string(),
                 langs,
                 description: parts[2].trim().to_string(),
                 category: parts[3].trim().to_ascii_lowercase(),
                 severity: parts[4].trim().to_ascii_lowercase(),
+                problem_summary: problem_summary.to_string(),
+                fix_hint: fix_hint.to_string(),
                 code: 0,
             };
 
@@ -170,7 +180,9 @@ mod tests {
         let registry = RuleRegistry::from_tsv(DEFAULT_RULES).expect("parse");
         assert!(!registry.all().is_empty());
         assert!(registry.rules_for_lang("go").next().is_some());
-        assert!(registry.rule("perf_avoid_string_concat_loop").is_some());
+        let rule = registry.rule("perf_avoid_string_concat_loop").expect("rule");
+        assert!(!rule.problem_summary.is_empty());
+        assert!(!rule.fix_hint.is_empty());
     }
 
     #[test]
@@ -181,5 +193,14 @@ mod tests {
         let second_run: Vec<String> =
             registry.rules_for_lang("rust").map(|rule| rule.id.clone()).collect();
         assert_eq!(first_run, second_run);
+    }
+
+    #[test]
+    fn requires_guidance_fields() {
+        let data = "id\tlangs\tdescription\tcategory\tseverity\tproblem_summary\tfix_hint\n"
+            .to_string() +
+            "rule\tgo\tdesc\tcat\twarning\t\t\n";
+        let result = RuleRegistry::from_tsv(&data);
+        assert!(result.is_err());
     }
 }

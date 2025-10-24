@@ -28,12 +28,14 @@ var (
 
 // Rule stores normalized rule metadata for fast lookups at analysis time.
 type Rule struct {
-	ID          string
-	Langs       []string
-	Description string
-	Category    string
-	Severity    string
-	Code        uint32
+	ID             string
+	Langs          []string
+	Description    string
+	Category       string
+	Severity       string
+	ProblemSummary string
+	FixHint        string
+	Code           uint32
 }
 
 // Registry groups rules by language and identifier for efficient querying.
@@ -82,7 +84,8 @@ func buildRegistry(rules []Rule) *Registry {
 	langCounts := make(map[string]int)
 	all := make([]Rule, 0, len(rules))
 
-	for _, rule := range rules {
+	for i := range rules {
+		rule := &rules[i]
 		if rule.ID == "" {
 			continue
 		}
@@ -102,8 +105,8 @@ func buildRegistry(rules []Rule) *Registry {
 		}
 		rule.Langs = normalizedLangs
 
-		byID[rule.ID] = rule
-		all = append(all, rule)
+		byID[rule.ID] = *rule
+		all = append(all, *rule)
 	}
 
 	byLang := make(map[string][]Rule, len(langCounts))
@@ -112,10 +115,11 @@ func buildRegistry(rules []Rule) *Registry {
 		byLang[lang] = make([]Rule, count)
 	}
 
-	for _, rule := range all {
+	for i := range all {
+		rule := &all[i]
 		for _, lang := range rule.Langs {
 			idx := langWriteIdx[lang]
-			byLang[lang][idx] = rule
+			byLang[lang][idx] = *rule
 			langWriteIdx[lang] = idx + 1
 		}
 	}
@@ -177,18 +181,25 @@ func parseTSV(data []byte) ([]Rule, error) {
 		}
 
 		fields := strings.Split(line, "\t")
-		if len(fields) != 5 {
+		if len(fields) != 7 {
 			return nil, errors.New("ruleset: invalid field count on line " + strconv.Itoa(lineNum))
 		}
 
 		langs := parseLangs(fields[1])
+		problem := strings.TrimSpace(fields[5])
+		fix := strings.TrimSpace(fields[6])
+		if problem == "" || fix == "" {
+			return nil, errors.New("ruleset: missing guidance fields on line " + strconv.Itoa(lineNum))
+		}
 
 		rules = append(rules, Rule{
-			ID:          strings.TrimSpace(fields[0]),
-			Langs:       langs,
-			Description: strings.TrimSpace(fields[2]),
-			Category:    strings.TrimSpace(fields[3]),
-			Severity:    strings.TrimSpace(fields[4]),
+			ID:             strings.TrimSpace(fields[0]),
+			Langs:          langs,
+			Description:    strings.TrimSpace(fields[2]),
+			Category:       strings.TrimSpace(fields[3]),
+			Severity:       strings.TrimSpace(fields[4]),
+			ProblemSummary: problem,
+			FixHint:        fix,
 		})
 	}
 

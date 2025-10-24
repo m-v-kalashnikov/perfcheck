@@ -37,6 +37,15 @@ This document summarizes coding principles that make software efficient **by des
 
 See perfcheck-core/config/default_rules.tsv for the canonical rule registry.
 
+## Diagnostic Format
+Every perfcheck diagnostic now embeds actionable guidance directly in the message:
+
+```
+[perf_rule_id] detector-specific detail Why: <problem_summary> Fix: <fix_hint>
+```
+
+The `<problem_summary>` and `<fix_hint>` values come from the shared rule registry, so every new rule must populate those TSV columns. Both the Go analyzer (via go/analysis) and the Rust CLI reuse this string format, ensuring editors and CI output explain **why** a pattern is costly and the fastest way to remediate it.
+
 ## Analyzer Examples
 
 ### `perf_avoid_string_concat_loop`

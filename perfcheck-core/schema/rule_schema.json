@@ -6,7 +6,9 @@
     { "name": "langs", "type": "string", "required": true, "description": "Comma separated list of supported languages" },
     { "name": "description", "type": "string", "required": true, "description": "Human readable rule summary" },
     { "name": "category", "type": "string", "required": true, "description": "Rule taxonomy bucket" },
-    { "name": "severity", "type": "string", "required": true, "description": "Recommended severity level (info, warning, medium, high, error)" }
+    { "name": "severity", "type": "string", "required": true, "description": "Recommended severity level (info, warning, medium, high, error)" },
+    { "name": "problem_summary", "type": "string", "required": true, "description": "Short explanation of why the pattern is costly" },
+    { "name": "fix_hint", "type": "string", "required": true, "description": "Actionable fix guidance the analyzers can surface" }
   ],
   "notes": "The TSV header row must match the column names exactly. Languages are normalized to lowercase tokens."
 }

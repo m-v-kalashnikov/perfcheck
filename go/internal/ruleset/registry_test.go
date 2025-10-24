@@ -16,6 +16,9 @@ func TestDefaultRegistryLoads(t *testing.T) {
 		if rule.ID == "" {
 			t.Fatalf("rule returned empty id: %+v", rule)
 		}
+		if rule.ProblemSummary == "" || rule.FixHint == "" {
+			t.Fatalf("rule %s missing guidance fields", rule.ID)
+		}
 		if prev, ok := seen[rule.Code]; ok && prev != rule.ID {
 			t.Fatalf("hash collision between %q and %q", prev, rule.ID)
 		}
@@ -36,5 +39,13 @@ func TestRulesForLangReturnsCopy(t *testing.T) {
 	fresh := reg.RulesForLang("go")
 	if fresh[0].ID == "mutated" {
 		t.Fatal("returned slice is not isolated copy")
+	}
+}
+
+func TestParseTSVRequiresGuidance(t *testing.T) {
+	data := "id\tlangs\tdescription\tcategory\tseverity\tproblem_summary\tfix_hint\n" +
+		"rule\tgo\tdesc\tcat\twarning\t\t\n"
+	if _, err := parseTSV([]byte(data)); err == nil {
+		t.Fatal("expected error when guidance fields missing")
 	}
 }

@@ -1,11 +1,11 @@
-id	langs	description	category	severity
-perf_avoid_string_concat_loop	go,rust	Avoid string concatenation in loops; use builders or reserved buffers	memory	warning
-perf_regex_compile_once	go	Compile regular expressions once instead of inside hot loops	cpu	warning
-perf_preallocate_collections	go,rust	Preallocate slices, vectors, and maps when the final size is predictable	allocation	warning
-perf_avoid_reflection_dynamic	go,rust	Avoid reflection in Go and dynamic dispatch in Rust hot paths	runtime	high
-perf_bound_concurrency	go,rust	Bound concurrency with worker pools or async limits to prevent oversubscription	concurrency	error
-perf_borrow_instead_of_clone	rust	Prefer borrowing instead of cloning to avoid unnecessary allocations	allocation	high
-perf_equal_fold_compare	go	Use strings.EqualFold instead of strings.ToLower or strings.ToUpper for comparisons	string	info
-perf_vec_reserve_capacity	rust	Reserve capacity on vectors built inside deterministic loops	allocation	warning
-perf_syncpool_store_pointers	go	Store pointer types in sync.Pool to avoid interface allocation churn	allocation	medium
-perf_writer_prefer_bytes	go	Write byte slices directly instead of converting to strings	io	info
+id	langs	description	category	severity	problem_summary	fix_hint
+perf_avoid_string_concat_loop	go,rust	Avoid string concatenation in loops; use builders or reserved buffers	memory	warning	Repeated string concatenation inside loops reallocates and copies growing buffers.	Use strings.Builder or String::with_capacity, grow once, and append within the loop.
+perf_regex_compile_once	go	Compile regular expressions once instead of inside hot loops	cpu	warning	Compiling a regexp each iteration reparses the pattern and dominates CPU time.	Precompile via regexp.MustCompile outside the loop and reuse the compiled matcher.
+perf_preallocate_collections	go,rust	Preallocate slices, vectors, and maps when the final size is predictable	allocation	warning	Letting collections grow unchecked triggers repeated allocations and rehashes.	Call make/with_capacity or reserve the expected length before pushing items.
+perf_avoid_reflection_dynamic	go,rust	Avoid reflection in Go and dynamic dispatch in Rust hot paths	runtime	high	Reflection or dyn dispatch in hot loops blocks inlining and adds heap churn.	Use concrete types or hoist dynamic lookups outside the loop to reuse resolved handles.
+perf_bound_concurrency	go,rust	Bound concurrency with worker pools or async limits to prevent oversubscription	concurrency	error	Spawning unbounded work can exhaust CPU, memory, and OS descriptors.	Run tasks through worker pools, semaphores, or bounded executors to cap concurrency.
+perf_borrow_instead_of_clone	rust	Prefer borrowing instead of cloning to avoid unnecessary allocations	allocation	high	Loop-local clones copy data and allocate even when a borrow would suffice.	Pass references or restructure ownership so the loop reuses the source value without cloning.
+perf_equal_fold_compare	go	Use strings.EqualFold instead of strings.ToLower or strings.ToUpper for comparisons	string	info	Normalizing both sides creates new strings and scans the data twice.	Call strings.EqualFold for case-insensitive equality to avoid allocations.
+perf_vec_reserve_capacity	rust	Reserve capacity on vectors built inside deterministic loops	allocation	warning	Vec growth without reserves reallocates and copies as the loop progresses.	Initialize vectors with Vec::with_capacity or reserve_exact before pushing items.
+perf_syncpool_store_pointers	go	Store pointer types in sync.Pool to avoid interface allocation churn	allocation	medium	Putting values (not pointers) in sync.Pool copies on every get/put and defeats pooling.	Pool pointer types so objects stay on the heap and can be reused without copying.
+perf_writer_prefer_bytes	go	Write byte slices directly instead of converting to strings	io	info	Casting []byte to string for writes forces an allocation and byte copy.	Pass []byte directly to io.Writer.Write or use bytes.Buffer without string conversions.

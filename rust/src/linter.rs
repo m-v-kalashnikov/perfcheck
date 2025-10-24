@@ -420,10 +420,13 @@ impl<'a> FileContext<'a> {
     }
 
     fn push_diag(&mut self, line: usize, column: usize, subject: &str, rule: &Rule, detail: &str) {
+        let detail_sentence = ensure_sentence(&format!("{detail} (\"{subject}\")"));
+        let summary = ensure_sentence(&rule.problem_summary);
+        let fix = ensure_sentence(&rule.fix_hint);
         self.diagnostics.push(Diagnostic {
             rule_id: rule.id.clone(),
             severity: rule.severity.clone(),
-            message: format!("{detail} (\"{subject}\")"),
+            message: format!("{detail_sentence} Why: {summary} Fix: {fix}"),
             path: self.path.to_path_buf(),
             line,
             column,
@@ -498,6 +501,18 @@ fn contains_trait_object(text: &str) -> bool {
         lower.contains("dyn>")
 }
 
+fn ensure_sentence(text: &str) -> String {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+    if trimmed.ends_with('.') || trimmed.ends_with('!') || trimmed.ends_with('?') {
+        trimmed.to_string()
+    } else {
+        format!("{trimmed}.")
+    }
+}
+
 const fn is_ident_start(ch: u8) -> bool {
     ch == b'_' || ch.is_ascii_alphabetic()
 }
@@ -530,6 +545,8 @@ fn build(items: &[String]) -> String {
         let diags = lint_source(code, Path::new(TEST_FILE), registry);
         assert_eq!(diags.len(), 1);
         assert_eq!(diags[0].rule_id, "perf_avoid_string_concat_loop");
+        assert!(diags[0].message.contains("Why:"));
+        assert!(diags[0].message.contains("Fix:"));
     }
 
     #[test]
