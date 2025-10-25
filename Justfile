@@ -51,13 +51,13 @@ go-tools: _go_ensure_tools
 go-maintain:
 	@echo "[go] golangci-lint fmt"
 	@just _checked_run go 'env GOCACHE="$PWD/.gocache" GOLANGCI_LINT_CACHE="$PWD/.golangci-cache" PATH="./bin:$PATH" golangci-lint fmt --config .golangci.yml ./...'
-	@echo "[go] building perfcheck-golangci bridge"
+	@echo "[go] building perfcheck vettool"
 	@mkdir -p go/bin
-	@just _checked_run go go build -o bin/perfcheck-golangci ./cmd/perfcheck-golangci
+	@just _checked_run go go build -o bin/perfcheck-go ./cmd/perfcheck-go
 	@echo "[go] golangci-lint run"
 	@just _checked_run go 'env GOCACHE="$PWD/.gocache" GOLANGCI_LINT_CACHE="$PWD/.golangci-cache" PATH="./bin:$PATH" golangci-lint run --config .golangci.yml ./...'
 	@echo "[go] perfcheck analyzers"
-	@just _checked_run go 'env GOCACHE="$PWD/.gocache" go vet -vettool="$(pwd)/bin/perfcheck-golangci" ./...'
+	@just _checked_run go 'env GOCACHE="$PWD/.gocache" go vet -vettool="$(pwd)/bin/perfcheck-go" ./...'
 	@echo "[go] go mod verify"
 	@just _checked_run go go mod verify
 	@echo "[go] govulncheck ./..."

@@ -3,9 +3,9 @@ package main
 import (
 	"golang.org/x/tools/go/analysis/unitchecker"
 
-	"github.com/m-v-kalashnikov/perfcheck/go/internal/analyzer"
+	"github.com/m-v-kalashnikov/perfcheck/go/pkg/perfchecklint"
 )
 
 func main() {
-	unitchecker.Main(analyzer.All()...)
+	unitchecker.Main(perfchecklint.Analyzers()...)
 }

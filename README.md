@@ -5,6 +5,7 @@ Cross-language **Performance-by-Default** linting toolkit for Go and Rust. The g
 ## Structure
 - `perfcheck-core/` — canonical rule registry (`config/default_rules.tsv`) and schema docs
 - `go/` — Go analyzer executable (unitchecker) plus integration tests
+- `go/pkg/perfchecklint` — public Go module exposing the analyzer bundle + metadata for downstream tooling
 - `rust/` — Rust linter library + CLI that walks crates
 - `docs/` — methodology and research source material
 - `openspec/` — change tracking and capability specs
@@ -17,7 +18,7 @@ Cross-language **Performance-by-Default** linting toolkit for Go and Rust. The g
 ## Go Analyzer
 - Build: `cd go && go build ./cmd/perfcheck-go`
 - Run (example): `go vet -vettool=$(pwd)/perfcheck-go ./...`
-- GolangCI-Lint integration: build `go/cmd/perfcheck-golangci` and register it as a custom linter (see `docs/integrations.md#golangci-lint`).
+- GolangCI-Lint integration: enable the upstream `perfcheck` linter once the GolangCI-Lint release that vendors `go/pkg/perfchecklint` is available (details in `docs/integrations.md#golangci-lint`).
 - Tests: `cd go && GOCACHE=$(pwd)/.gocache go test ./...`
 
 ## Rust Linter
@@ -31,7 +32,7 @@ Cross-language **Performance-by-Default** linting toolkit for Go and Rust. The g
 - Keep rule IDs stable; they double as numeric hashes for hot-path lookups.
 - Update docs/performance-by-default.md when expanding the rule set.
 - Install local tooling before linting: `golangci-lint`, `goimports`, `taplo` (`cargo install taplo-cli`), `rustup component add rustfmt clippy`, `rustup toolchain install nightly`, and `cargo install cargo-deny cargo-audit cargo-udeps` (these pull advisory databases on first run).
-- Run `just go-maintain` to apply `golangci-lint fmt` (running `gofmt`, `goimports`, `gci`, and `golines` with the configured rewrites), build the GolangCI-Lint bridge, run `golangci-lint run`, execute the perfcheck multichecker, verify `go.mod`, and scan with `govulncheck` (first run downloads the Go vulnerability database).
+- Run `just go-maintain` to apply `golangci-lint fmt` (running `gofmt`, `goimports`, `gci`, and `golines` with the configured rewrites), build the perfcheck vettool, run `golangci-lint run`, execute the perfcheck analyzers via `go vet -vettool`, verify `go.mod`, and scan with `govulncheck` (first run downloads the Go vulnerability database).
 - Run `just rust-maintain` to apply `cargo fmt --check`, validate TOML manifests with `taplo format --check --diff`, execute `cargo clippy --all-targets --all-features -- -D warnings`, and run the deny/audit/udeps hygiene checks (deny/audit steps require the RustSec database, so ensure network access when refreshing it).
 - Run `just pre-commit` from the repository root to execute the lint commands, Go tests, Rust tests, and `openspec validate --strict` before submitting changes.
 
@@ -39,13 +40,13 @@ Cross-language **Performance-by-Default** linting toolkit for Go and Rust. The g
 
 | Rule ID                         | Languages | Description                                                                              | Docs                                                                     | Fixtures                                                                                              |
 |---------------------------------|-----------|------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
-| `perf_avoid_string_concat_loop` | Go, Rust  | Avoid string concatenation in loops; use builders or reserved buffers                    | [Docs](docs/performance-by-default.md#perf_avoid_string_concat_loop)     | Go: `go/internal/analyzer/testdata/src/violations/violations.go`, Rust: `rust/fixtures/violations.rs` |
-| `perf_regex_compile_once`       | Go        | Compile regular expressions once instead of inside hot loops                             | [Docs](docs/performance-by-default.md#perf_regex_compile_once-go)        | Go: `go/internal/analyzer/testdata/src/violations/violations.go`                                      |
-| `perf_preallocate_collections`  | Go, Rust  | Preallocate slices, vectors, and maps when the final size is predictable                 | [Docs](docs/performance-by-default.md#perf_preallocate_collections)      | Go: `go/internal/analyzer/testdata/src/violations/violations.go`, Rust: `rust/fixtures/violations.rs` |
-| `perf_avoid_reflection_dynamic` | Go, Rust  | Avoid reflection in Go and dynamic dispatch in Rust hot paths                            | [Docs](docs/performance-by-default.md#perf_avoid_reflection_dynamic)     | Go: `go/internal/analyzer/testdata/src/violations/violations.go`, Rust: `rust/fixtures/violations.rs` |
-| `perf_bound_concurrency`        | Go, Rust  | Bound concurrency with worker pools or async limits to prevent oversubscription          | [Docs](docs/performance-by-default.md#perf_bound_concurrency)            | Go: `go/internal/analyzer/testdata/src/violations/violations.go`, Rust: `rust/fixtures/violations.rs` |
+| `perf_avoid_string_concat_loop` | Go, Rust  | Avoid string concatenation in loops; use builders or reserved buffers                    | [Docs](docs/performance-by-default.md#perf_avoid_string_concat_loop)     | Go: `go/pkg/perfchecklint/testdata/src/violations/violations.go`, Rust: `rust/fixtures/violations.rs` |
+| `perf_regex_compile_once`       | Go        | Compile regular expressions once instead of inside hot loops                             | [Docs](docs/performance-by-default.md#perf_regex_compile_once-go)        | Go: `go/pkg/perfchecklint/testdata/src/violations/violations.go`                                      |
+| `perf_preallocate_collections`  | Go, Rust  | Preallocate slices, vectors, and maps when the final size is predictable                 | [Docs](docs/performance-by-default.md#perf_preallocate_collections)      | Go: `go/pkg/perfchecklint/testdata/src/violations/violations.go`, Rust: `rust/fixtures/violations.rs` |
+| `perf_avoid_reflection_dynamic` | Go, Rust  | Avoid reflection in Go and dynamic dispatch in Rust hot paths                            | [Docs](docs/performance-by-default.md#perf_avoid_reflection_dynamic)     | Go: `go/pkg/perfchecklint/testdata/src/violations/violations.go`, Rust: `rust/fixtures/violations.rs` |
+| `perf_bound_concurrency`        | Go, Rust  | Bound concurrency with worker pools or async limits to prevent oversubscription          | [Docs](docs/performance-by-default.md#perf_bound_concurrency)            | Go: `go/pkg/perfchecklint/testdata/src/violations/violations.go`, Rust: `rust/fixtures/violations.rs` |
 | `perf_borrow_instead_of_clone`  | Rust      | Prefer borrowing instead of cloning to avoid unnecessary allocations                     | [Docs](docs/performance-by-default.md#perf_borrow_instead_of_clone-rust) | Rust: `rust/fixtures/violations.rs`                                                                   |
-| `perf_equal_fold_compare`       | Go        | Use `strings.EqualFold` instead of `strings.ToLower` / `strings.ToUpper` for comparisons | [Docs](docs/performance-by-default.md#perf_equal_fold_compare-go)        | Go: `go/internal/analyzer/testdata/src/violations/violations.go`                                      |
+| `perf_equal_fold_compare`       | Go        | Use `strings.EqualFold` instead of `strings.ToLower` / `strings.ToUpper` for comparisons | [Docs](docs/performance-by-default.md#perf_equal_fold_compare-go)        | Go: `go/pkg/perfchecklint/testdata/src/violations/violations.go`                                      |
 | `perf_vec_reserve_capacity`     | Rust      | Reserve capacity on vectors built inside deterministic loops                             | [Docs](docs/performance-by-default.md#perf_vec_reserve_capacity-rust)    | Rust: `rust/fixtures/violations.rs`                                                                   |
-| `perf_syncpool_store_pointers`  | Go        | Store pointer types in `sync.Pool` to avoid interface allocation churn                   | [Docs](docs/performance-by-default.md#perf_syncpool_store_pointers-go)   | Go: `go/internal/analyzer/testdata/src/violations/violations.go`                                      |
-| `perf_writer_prefer_bytes`      | Go        | Write byte slices directly instead of converting to strings                              | [Docs](docs/performance-by-default.md#perf_writer_prefer_bytes-go)       | Go: `go/internal/analyzer/testdata/src/violations/violations.go`                                      |
+| `perf_syncpool_store_pointers`  | Go        | Store pointer types in `sync.Pool` to avoid interface allocation churn                   | [Docs](docs/performance-by-default.md#perf_syncpool_store_pointers-go)   | Go: `go/pkg/perfchecklint/testdata/src/violations/violations.go`                                      |
+| `perf_writer_prefer_bytes`      | Go        | Write byte slices directly instead of converting to strings                              | [Docs](docs/performance-by-default.md#perf_writer_prefer_bytes-go)       | Go: `go/pkg/perfchecklint/testdata/src/violations/violations.go`                                      |

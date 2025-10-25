@@ -4,7 +4,7 @@ This guide explains how to run perfcheck inside popular lint aggregators for
 Go and Rust projects.
 
 For this repository, the fastest path is to run the bundled commands:
-- `just go-maintain` runs `golangci-lint fmt` (applying `gofmt`, `goimports`, `gci`, and `golines` with the repository settings), builds the GolangCI-Lint bridge, runs `golangci-lint run` with the curated `go/.golangci.yml`, executes the perfcheck multichecker, checks `go.mod`, and runs `govulncheck ./...` (expect the first `govulncheck` run to download vulnerability data).
+- `just go-maintain` runs `golangci-lint fmt` (applying `gofmt`, `goimports`, `gci`, and `golines` with the repository settings), rebuilds the perfcheck vettool, runs `golangci-lint run` with the curated `go/.golangci.yml`, executes `go vet -vettool=./bin/perfcheck-go` across the module, checks `go.mod`, and runs `govulncheck ./...` (expect the first `govulncheck` run to download vulnerability data).
 - `just rust-maintain` runs `cargo fmt --check`, validates all workspace TOML files with `taplo format --check --diff` using `rust/taplo.toml`, executes `cargo clippy --all-targets --all-features -- -D warnings`, `cargo deny check`, `cargo audit`, and `cargo +nightly udeps --all-targets` in sequence.
 The Rust workflow requires `rustfmt`, `clippy`, `cargo-deny`, `cargo-audit`, and `cargo-udeps` along with a nightly toolchain; the deny/audit steps need the RustSec advisory database to be refreshed when network access is permitted.
 
@@ -26,19 +26,41 @@ The Rust workflow requires `rustfmt`, `clippy`, `cargo-deny`, `cargo-audit`, and
 
 ## GolangCI-Lint
 
-1. Build the multichecker binary:
-   ```bash
-   cd go
-   go build ./cmd/perfcheck-golangci
-   ```
-   Keep the resulting `perfcheck-golangci` binary somewhere on your `PATH` (for
-   example `go/bin`).
-2. Run `golangci-lint run` as usual using `go/.golangci.yml`; this covers the standard static analyzers.
-3. Execute the perfcheck bridge separately to surface performance violations:
-   ```bash
-   ./bin/perfcheck-golangci ./...
-   ```
-  The `just go-maintain` recipe automates these steps and adds module verification and `govulncheck` when working inside this repository.
+Perfcheck now publishes its analyzers and rule metadata through the
+`github.com/m-v-kalashnikov/perfcheck/go/pkg/perfchecklint` module so
+GolangCI-Lint can vendor the suite directly. Once the upstream release that
+includes the built-in `perfcheck` linter ships (targeting GolangCI-Lint v2.6.0
+or newer), repositories can enable it purely through configuration:
+
+```yaml
+linters:
+  enable:
+    - perfcheck
+
+linters-settings:
+  perfcheck:
+    # Optional allowlist; omit to run all rules.
+    rules:
+      include:
+        - perf_avoid_string_concat_loop
+    # Optional severity overrides.
+    severity:
+      perf_prefer_stack_alloc: warning
+```
+
+Perfcheck follows the GolangCI-Lint go/analysis adapter conventions:
+
+- Rule IDs map 1:1 with `perfchecklint.Rules()` metadata so `nolint:perf_*`
+  continues to work.
+- GolangCI-Lint enforces the compatibility matrix documented in the proposal
+  (Go toolchain ≥1.24, GolangCI-Lint ≥v2.6.0). When the versions drift, the
+  perfcheck linter fails fast with an actionable error.
+- `linters-settings.perfcheck.rules.include` can be used to restrict emission to
+  a subset of rule identifiers, and future releases will add severity toggles in
+  the same block.
+
+Until the upstream release is available, keep running the analyzers directly via
+`go vet -vettool=$(pwd)/perfcheck-go ./...` (see the Go analyzer section above).
 
 ## Clippy
 

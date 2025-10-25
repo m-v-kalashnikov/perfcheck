@@ -4,15 +4,14 @@
 - [ ] 1.3 Define support policy and escalation paths (perfcheck + GolangCI-Lint) covering bug reports, backports, and deprecation of the existing vettool wrapper.
 
 ## 2. Perfcheck Module Refactor
-- [ ] 2.1 Carve analyzers out of `internal/analyzer` into a public module (e.g. `go/pkg/perfchecklint`) that exports `Analyzers()` plus a `Build()` helper returning `goanalysis.Linter`.
-- [ ] 2.2 Expose stable rule metadata accessors (read-only registry, numeric rule IDs, severity defaults) so GolangCI-Lint can surface docs through `lintersdb`.
+- [x] 2.1 Carve analyzers out of `internal/analyzer` into a public module (e.g. `go/pkg/perfchecklint`) that exports `Analyzers()` plus a `Build()` helper returning `goanalysis.Linter`.
+- [x] 2.2 Expose stable rule metadata accessors (read-only registry, numeric rule IDs, severity defaults) so GolangCI-Lint can surface docs through `lintersdb`.
 - [ ] 2.3 Retarget the module to Go 1.24, add CI to enforce the toolchain matrix, and publish the first tagged release (`v0.x.0`) with changelog + module documentation.
 
-## 3. GolangCI-Lint Integration Work
-- [ ] 3.1 Add the new module dependency to GolangCI-Lint (`go.mod/go.sum` + vendor) and wire it through Dependabot/security policies.
-- [ ] 3.2 Implement `pkg/golinters/perfcheck/perfcheck.go` that wraps the analyzers, plumbs configuration (rule allowlists, severity toggles), sets diagnostic categories, and registers metadata in `lintersdb`.
-- [ ] 3.3 Extend `pkg/config` and `.golangci.next.reference.yml` with perfcheck settings, provide fixtures under `pkg/golinters/perfcheck/testdata/`, and update `docs/linters/perfcheck.md` with usage instructions.
-- [ ] 3.4 Remove or deprecate the existing `cmd/perfcheck-golangci` wrapper inside this repo and replace documentation with the configuration-first workflow.
+- [x] 3.1 Add the new module dependency to GolangCI-Lint (`go.mod/go.sum` + vendor) and wire it through Dependabot/security policies.
+- [x] 3.2 Implement `pkg/golinters/perfcheck/perfcheck.go` that wraps the analyzers, plumbs configuration (rule allowlists, severity toggles), sets diagnostic categories, and registers metadata in `lintersdb`.
+- [x] 3.3 Extend `pkg/config` and `.golangci.next.reference.yml` with perfcheck settings, provide fixtures under `pkg/golinters/perfcheck/testdata/`, and update `docs/linters/perfcheck.md` with usage instructions.
+- [x] 3.4 Remove or deprecate the existing `cmd/perfcheck-golangci` wrapper inside this repo and replace documentation with the configuration-first workflow.
 
 ## 4. Validation & Quality Gates
 - [ ] 4.1 Author unit and integration tests (go/analysis fixtures + GolangCI-Lint `pkg/golinters/tests`) covering rule diagnostics, configuration parsing, and compatibility with at least two sample projects.
