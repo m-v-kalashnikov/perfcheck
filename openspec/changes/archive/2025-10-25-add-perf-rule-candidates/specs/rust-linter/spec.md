@@ -1,8 +1,4 @@
-# rust-linter Specification
-
-## Purpose
-TBD - created by archiving change bootstrap-perfcheck. Update Purpose after archive.
-## Requirements
+## MODIFIED Requirements
 ### Requirement: Rust Performance Linter
 The system SHALL provide a Rust linter capable of scanning crate source files for performance-by-default violations.
 #### Scenario: Detect linked-list usage
@@ -28,11 +24,3 @@ The system SHALL provide a Rust linter capable of scanning crate source files fo
 #### Scenario: Detect unnecessary heap indirection
 - **WHEN** Rust code allocates a small `Copy` or <=2-word struct using `Box`, `Arc`, or `Rc` when stack storage suffices
 - **THEN** the linter SHALL emit `perf_prefer_stack_alloc` to encourage stack allocation.
-
-### Requirement: Linter CLI
-The system SHALL expose a CLI entrypoint that analyzes a crate directory and reports violations with rule identifiers.
-
-#### Scenario: CLI execution
-- **WHEN** the CLI runs against a crate path
-- **THEN** it SHALL traverse source files, apply all registered rules, and exit non-zero when violations are present.
-

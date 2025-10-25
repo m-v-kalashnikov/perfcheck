@@ -1,8 +1,4 @@
-# go-analyzer Specification
-
-## Purpose
-TBD - created by archiving change bootstrap-perfcheck. Update Purpose after archive.
-## Requirements
+## MODIFIED Requirements
 ### Requirement: Go Performance Analyzer
 The system SHALL provide a go/analysis-based linter that surfaces performance-by-default violations.
 #### Scenario: Detect linked-list usage
@@ -28,11 +24,3 @@ The system SHALL provide a go/analysis-based linter that surfaces performance-by
 #### Scenario: Detect needless heap allocation of small structs
 - **WHEN** Go code allocates or passes pointers to small structs/values that could remain on the stack without escaping
 - **THEN** the analyzer SHALL emit `perf_prefer_stack_alloc` and explain that stack allocation avoids garbage and pointer indirection.
-
-### Requirement: Analyzer Packaging
-The system SHALL expose the analyzer as a unitchecker-compatible binary for integration with go vet and golangci-lint.
-
-#### Scenario: CLI entrypoint
-- **WHEN** `go vet -vettool` is invoked with the perfcheck analyzer
-- **THEN** it SHALL execute the registered performance checks without additional setup.
-

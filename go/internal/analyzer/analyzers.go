@@ -14,5 +14,11 @@ func All() []*analysis.Analyzer {
 		equalFoldAnalyzer,
 		syncPoolPointerAnalyzer,
 		writerPreferBytesAnalyzer,
+		linkedListAnalyzer,
+		atomicSmallLockAnalyzer,
+		deferInLoopAnalyzer,
+		runeConversionAnalyzer,
+		bufferedIOAnalyzer,
+		stackAllocAnalyzer,
 	}
 }

@@ -1,6 +1,7 @@
 package violations
 
 import (
+	"container/list"
 	"fmt"
 	"io"
 	"reflect"
@@ -69,6 +70,62 @@ func store(pool *sync.Pool, value pooled) {
 // perf_writer_prefer_bytes
 func writeBytes(w io.Writer, payload []byte) (int, error) {
 	return io.WriteString(w, string(payload)) // want "[perf_writer_prefer_bytes]"
+}
+
+// perf_avoid_linked_list
+func linked(items []int) *list.List {
+	ll := list.New()
+	for _, item := range items {
+		ll.PushBack(item) // want "[perf_avoid_linked_list]"
+	}
+	return ll
+}
+
+// perf_atomic_for_small_lock
+type counter struct {
+	mu  sync.Mutex
+	val int
+}
+
+func (c *counter) set(v int) {
+	c.mu.Lock()
+	c.val = v // want "[perf_atomic_for_small_lock]"
+	c.mu.Unlock()
+}
+
+// perf_no_defer_in_loop
+func closeLater(files []io.Closer) {
+	for _, f := range files {
+		defer f.Close() // want "[perf_no_defer_in_loop]"
+	}
+}
+
+// perf_avoid_rune_conversion
+func countRunes(s string) int {
+	count := 0
+	for range []rune(s) { // want "[perf_avoid_rune_conversion]"
+		count++
+	}
+	return count
+}
+
+// perf_use_buffered_io
+func writeLoop(w io.Writer, lines []string) error {
+	for _, line := range lines {
+		if _, err := fmt.Fprintln(w, line); err != nil { // want "[perf_use_buffered_io]"
+			return err
+		}
+	}
+	return nil
+}
+
+// perf_prefer_stack_alloc
+type point struct {
+	x, y int
+}
+
+func newPoint(x, y int) *point {
+	return &point{x: x, y: y} // want "[perf_prefer_stack_alloc]"
 }
 
 // helper to keep package referenced

@@ -1,8 +1,4 @@
-# perfcheck-core Specification
-
-## Purpose
-TBD - created by archiving change bootstrap-perfcheck. Update Purpose after archive.
-## Requirements
+## MODIFIED Requirements
 ### Requirement: Shared Rule Registry
 The system SHALL expose a canonical performance-by-default rule registry derived from the research methodology.
 #### Scenario: Register new rule batch
@@ -12,11 +8,3 @@ The system SHALL expose a canonical performance-by-default rule registry derived
 #### Scenario: Provide rule guidance
 - **WHEN** a language frontend queries any of the new rule records
 - **THEN** the registry entry SHALL include the problem summary, detection hint, and fix guidance sourced from the "Proposed PerfCheck Rule Candidates" research so analyzers can emit actionable diagnostics without duplicating strings.
-
-### Requirement: Rule Schema Validation
-The system SHALL provide a machine-readable schema so language analyzers can validate rule definitions.
-
-#### Scenario: Schema availability
-- **WHEN** a tool bundles the registry
-- **THEN** it SHALL embed the schema and default rules for offline use.
-

@@ -84,8 +84,22 @@ struct FileContext<'a> {
     dyn_rule: &'static Rule,
     concurrency_rule: &'static Rule,
     borrow_rule: &'static Rule,
+    linked_list_rule: &'static Rule,
+    enum_rule: &'static Rule,
+    arc_rule: &'static Rule,
+    mutex_rule: &'static Rule,
+    collect_rule: &'static Rule,
+    stack_rule: &'static Rule,
+    enum_active: bool,
+    enum_balance: i32,
+    pending_enum: bool,
     reported_spawn_lines: HashSet<usize>,
     reported_clone_lines: HashSet<usize>,
+    reported_linked_lines: HashSet<usize>,
+    reported_arc_lines: HashSet<usize>,
+    reported_mutex_lines: HashSet<usize>,
+    reported_collect_lines: HashSet<usize>,
+    reported_stack_lines: HashSet<usize>,
 }
 
 impl<'a> FileContext<'a> {
@@ -105,6 +119,19 @@ impl<'a> FileContext<'a> {
         let borrow_rule = registry
             .rule("perf_borrow_instead_of_clone")
             .expect("perf_borrow_instead_of_clone rule missing");
+        let linked_list_rule =
+            registry.rule("perf_avoid_linked_list").expect("perf_avoid_linked_list rule missing");
+        let enum_rule =
+            registry.rule("perf_large_enum_variant").expect("perf_large_enum_variant rule missing");
+        let arc_rule =
+            registry.rule("perf_unnecessary_arc").expect("perf_unnecessary_arc rule missing");
+        let mutex_rule = registry
+            .rule("perf_atomic_for_small_lock")
+            .expect("perf_atomic_for_small_lock rule missing");
+        let collect_rule =
+            registry.rule("perf_needless_collect").expect("perf_needless_collect rule missing");
+        let stack_rule =
+            registry.rule("perf_prefer_stack_alloc").expect("perf_prefer_stack_alloc rule missing");
 
         Self {
             path,
@@ -118,8 +145,22 @@ impl<'a> FileContext<'a> {
             dyn_rule,
             concurrency_rule,
             borrow_rule,
+            linked_list_rule,
+            enum_rule,
+            arc_rule,
+            mutex_rule,
+            collect_rule,
+            stack_rule,
+            enum_active: false,
+            enum_balance: 0,
+            pending_enum: false,
             reported_spawn_lines: HashSet::new(),
             reported_clone_lines: HashSet::new(),
+            reported_linked_lines: HashSet::new(),
+            reported_arc_lines: HashSet::new(),
+            reported_mutex_lines: HashSet::new(),
+            reported_collect_lines: HashSet::new(),
+            reported_stack_lines: HashSet::new(),
         }
     }
 
@@ -131,6 +172,13 @@ impl<'a> FileContext<'a> {
         for (idx, raw_line) in source.lines().enumerate() {
             let line_no = idx + 1;
             let line = raw_line.trim();
+
+            self.detect_linked_list(raw_line, line_no);
+            self.handle_enum_state(raw_line, line_no);
+            self.detect_arc_usage(raw_line, line_no);
+            self.detect_mutex_primitives(raw_line, line_no);
+            self.detect_needless_collect(raw_line, line_no);
+            self.detect_stack_alloc(raw_line, line_no);
 
             if line.starts_with("for ") || line.starts_with("while ") || line.starts_with("loop") {
                 self.pending_loop = true;
@@ -388,6 +436,169 @@ impl<'a> FileContext<'a> {
         }
     }
 
+    fn detect_linked_list(&mut self, raw_line: &str, line_no: usize) {
+        if self.reported_linked_lines.contains(&line_no) {
+            return;
+        }
+        let trimmed = raw_line.trim();
+        if trimmed.starts_with("//") {
+            return;
+        }
+        if let Some(idx) = find_token(raw_line, "LinkedList") {
+            self.reported_linked_lines.insert(line_no);
+            self.push_diag(
+                line_no,
+                idx + 1,
+                "LinkedList",
+                self.linked_list_rule,
+                "std::collections::LinkedList hurts cache locality",
+            );
+        }
+    }
+
+    fn handle_enum_state(&mut self, raw_line: &str, line_no: usize) {
+        let trimmed = raw_line.trim_start();
+        if !self.pending_enum && !self.enum_active && starts_enum_decl(trimmed) {
+            self.pending_enum = true;
+        }
+
+        let (opens, closes) = brace_counts(raw_line);
+
+        if self.pending_enum && opens > 0 {
+            self.enum_active = true;
+            self.enum_balance = opens - closes;
+            self.pending_enum = false;
+        } else if self.enum_active {
+            self.enum_balance += opens - closes;
+        }
+
+        if self.enum_active {
+            self.detect_large_enum_variant(raw_line, line_no);
+            if self.enum_balance <= 0 {
+                self.enum_active = false;
+            }
+        }
+    }
+
+    fn detect_large_enum_variant(&mut self, raw_line: &str, line_no: usize) {
+        if raw_line.trim_start().starts_with("//") {
+            return;
+        }
+        if find_large_array_literal(raw_line).is_some() {
+            self.push_diag(
+                line_no,
+                1,
+                raw_line.trim(),
+                self.enum_rule,
+                "enum variant stores a massive payload; box it",
+            );
+        }
+    }
+
+    fn detect_arc_usage(&mut self, raw_line: &str, line_no: usize) {
+        if self.reported_arc_lines.contains(&line_no) {
+            return;
+        }
+        if let Some(inner) = extract_generic_argument(raw_line, "Arc") {
+            if contains_nonsend_token(&inner) {
+                self.reported_arc_lines.insert(line_no);
+                self.push_diag(
+                    line_no,
+                    find_token(raw_line, "Arc").unwrap_or(1),
+                    "Arc",
+                    self.arc_rule,
+                    "Arc wrapping !Send data adds atomic overhead",
+                );
+            }
+        } else if let Some(arg) = extract_paren_argument(raw_line, "Arc::new") {
+            if contains_nonsend_token(&arg) {
+                self.reported_arc_lines.insert(line_no);
+                self.push_diag(
+                    line_no,
+                    find_token(raw_line, "Arc::new").unwrap_or(1),
+                    "Arc::new",
+                    self.arc_rule,
+                    "Arc wrapping !Send data adds atomic overhead",
+                );
+            }
+        }
+    }
+
+    fn detect_mutex_primitives(&mut self, raw_line: &str, line_no: usize) {
+        if self.reported_mutex_lines.contains(&line_no) {
+            // still allow second heuristic on same line if first matched
+        }
+        let mut flagged = false;
+        if let Some(inner) = extract_generic_argument(raw_line, "Mutex") {
+            if is_primitive_token(inner.trim()) {
+                flagged = true;
+            }
+        }
+        if !flagged {
+            if let Some(arg) = extract_paren_argument(raw_line, "Mutex::new") {
+                if is_literal_primitive(arg.trim()) {
+                    flagged = true;
+                }
+            }
+        }
+        if flagged {
+            self.reported_mutex_lines.insert(line_no);
+            self.push_diag(
+                line_no,
+                find_token(raw_line, "Mutex").unwrap_or(1),
+                "Mutex",
+                self.mutex_rule,
+                "Mutex guarding a primitive should be an atomic",
+            );
+        }
+    }
+
+    fn detect_needless_collect(&mut self, raw_line: &str, line_no: usize) {
+        if self.reported_collect_lines.contains(&line_no) {
+            return;
+        }
+        let collapsed = normalized_no_ws(raw_line);
+        if let Some(suffix) = find_needless_collect_suffix(&collapsed) {
+            self.reported_collect_lines.insert(line_no);
+            let col = raw_line.find("collect").map_or(1, |idx| idx + 1);
+            let detail = format!("collect::<Vec<_>>() followed by {suffix}");
+            self.push_diag(line_no, col, "collect", self.collect_rule, &detail);
+        }
+    }
+
+    fn detect_stack_alloc(&mut self, raw_line: &str, line_no: usize) {
+        if let Some(arg) = extract_paren_argument(raw_line, "Box::new") {
+            if is_small_box_target(arg.trim()) {
+                self.reported_stack_lines.insert(line_no);
+                self.push_diag(
+                    line_no,
+                    find_token(raw_line, "Box::new").unwrap_or(1),
+                    "Box::new",
+                    self.stack_rule,
+                    "Boxing a small Copy-sized value adds needless heap indirection",
+                );
+                return;
+            }
+        }
+        if raw_line.contains("Rc::new(") || raw_line.contains("Arc::new(") {
+            if let Some(arg) = extract_paren_argument(raw_line, "Rc::new")
+                .or_else(|| extract_paren_argument(raw_line, "Arc::new"))
+            {
+                if is_small_box_target(arg.trim()) {
+                    self.reported_stack_lines.insert(line_no);
+                    let token = if raw_line.contains("Rc::new") { "Rc::new" } else { "Arc::new" };
+                    self.push_diag(
+                        line_no,
+                        find_token(raw_line, token).unwrap_or(1),
+                        token,
+                        self.stack_rule,
+                        "Heap-indirection for a tiny value is unnecessary",
+                    );
+                }
+            }
+        }
+    }
+
     fn is_string_var(&self, name: &str) -> bool {
         self.lookup_var(name).is_some_and(|info| matches!(info, VarInfo::String))
     }
@@ -519,6 +730,253 @@ const fn is_ident_start(ch: u8) -> bool {
 
 const fn is_ident_char(ch: u8) -> bool {
     ch == b'_' || ch.is_ascii_alphanumeric()
+}
+
+fn find_token(line: &str, token: &str) -> Option<usize> {
+    for (idx, _) in line.match_indices(token) {
+        let before = line[..idx].chars().rev().find(|ch| !ch.is_whitespace());
+        let after = line[idx + token.len()..].chars().find(|ch| !ch.is_whitespace());
+        let boundary_before = before.is_none_or(|ch| !ch.is_ascii_alphanumeric() && ch != '_');
+        let boundary_after = after.is_none_or(|ch| !ch.is_ascii_alphanumeric() && ch != '_');
+        if boundary_before && boundary_after {
+            return Some(idx + 1);
+        }
+    }
+    None
+}
+
+fn extract_generic_argument(line: &str, ident: &str) -> Option<String> {
+    let pattern = format!("{ident}<");
+    let start_idx = line.find(&pattern)? + pattern.len();
+    let mut depth = 1i32;
+    let chars: Vec<char> = line.chars().collect();
+    let mut pos = start_idx;
+    while pos < chars.len() {
+        match chars[pos] {
+            '<' => depth += 1,
+            '>' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(chars[start_idx..pos].iter().collect());
+                }
+            }
+            _ => {}
+        }
+        pos += 1;
+    }
+    None
+}
+
+fn extract_paren_argument(line: &str, ident: &str) -> Option<String> {
+    let pattern = format!("{ident}(");
+    let start_idx = line.find(&pattern)? + pattern.len();
+    let mut depth = 1i32;
+    let chars: Vec<char> = line.chars().collect();
+    let mut pos = start_idx;
+    while pos < chars.len() {
+        match chars[pos] {
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(chars[start_idx..pos].iter().collect());
+                }
+            }
+            _ => {}
+        }
+        pos += 1;
+    }
+    None
+}
+
+fn find_large_array_literal(line: &str) -> Option<usize> {
+    let bytes = line.as_bytes();
+    let mut idx = 0usize;
+    while idx < bytes.len() {
+        if bytes[idx] == b'[' {
+            if let Some(semi_rel) = line[idx..].find(';') {
+                let semi_idx = idx + semi_rel;
+                if let Some(end_rel) = line[semi_idx..].find(']') {
+                    let end_idx = semi_idx + end_rel;
+                    let number = line[semi_idx + 1..end_idx].trim();
+                    if let Ok(value) = number.parse::<u32>() {
+                        if value >= 128 {
+                            return Some(idx + 1);
+                        }
+                    }
+                }
+            }
+        }
+        idx += 1;
+    }
+    None
+}
+
+fn contains_nonsend_token(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    if lower.contains("refcell") || lower.contains("unsafecell") || lower.contains("cell<") {
+        return true;
+    }
+    for (idx, _) in lower.match_indices("rc<") {
+        if idx == 0 || lower.as_bytes()[idx - 1] != b'a' {
+            return true;
+        }
+    }
+    for (idx, _) in lower.match_indices("rc::") {
+        if idx == 0 || lower.as_bytes()[idx - 1] != b'a' {
+            return true;
+        }
+    }
+    false
+}
+
+fn is_primitive_token(text: &str) -> bool {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    if trimmed.starts_with("Option<") && trimmed.ends_with('>') {
+        let inner = &trimmed[7..trimmed.len() - 1];
+        return is_primitive_token(inner);
+    }
+    matches!(
+        trimmed,
+        "bool" |
+            "char" |
+            "i8" |
+            "i16" |
+            "i32" |
+            "i64" |
+            "i128" |
+            "isize" |
+            "u8" |
+            "u16" |
+            "u32" |
+            "u64" |
+            "u128" |
+            "usize" |
+            "f32" |
+            "f64"
+    )
+}
+
+fn is_literal_primitive(arg: &str) -> bool {
+    let trimmed = arg.trim();
+    if trimmed.eq("true") || trimmed.eq("false") {
+        return true;
+    }
+    if trimmed.starts_with('\'') && trimmed.ends_with('\'') {
+        return true;
+    }
+    let mut digits = String::new();
+    for ch in trimmed.chars() {
+        if ch.is_ascii_digit() || ch == '_' {
+            digits.push(ch);
+            continue;
+        }
+        break;
+    }
+    !digits.is_empty()
+}
+
+fn normalized_no_ws(line: &str) -> String {
+    line.chars().filter(|ch| !ch.is_whitespace()).collect()
+}
+
+const NEEDLESS_COLLECT_SUFFIXES: [&str; 7] =
+    [".len()", ".is_empty()", ".iter()", ".iter_mut()", ".into_iter()", ".first()", ".last()"];
+
+fn find_needless_collect_suffix(collapsed: &str) -> Option<&'static str> {
+    let pattern = ".collect::<Vec<";
+    let mut idx = 0usize;
+    while let Some(found) = collapsed[idx..].find(pattern) {
+        let mut pos = idx + found + pattern.len();
+        let bytes = collapsed.as_bytes();
+        let mut depth = 1i32;
+        while pos < bytes.len() && depth > 0 {
+            match bytes[pos] {
+                b'<' => depth += 1,
+                b'>' => depth -= 1,
+                _ => {}
+            }
+            pos += 1;
+        }
+        if depth != 0 || pos >= bytes.len() {
+            break;
+        }
+        if !collapsed[pos..].starts_with(">()") {
+            idx = pos;
+            continue;
+        }
+        let tail = &collapsed[pos + 3..];
+        for suffix in NEEDLESS_COLLECT_SUFFIXES {
+            if tail.starts_with(suffix) {
+                return Some(suffix);
+            }
+        }
+        idx = pos;
+    }
+    None
+}
+
+fn is_small_box_target(arg: &str) -> bool {
+    if is_literal_primitive(arg) {
+        return true;
+    }
+    if arg.starts_with('(') && arg.ends_with(')') {
+        return count_commas_outside_braces(arg) <= 2;
+    }
+    if arg.contains('{') && arg.contains('}') {
+        let commas = count_commas_outside_braces(arg);
+        return commas <= 2 && arg.len() <= 80;
+    }
+    false
+}
+
+fn count_commas_outside_braces(text: &str) -> usize {
+    let mut depth = 0i32;
+    let mut count = 0usize;
+    for ch in text.chars() {
+        match ch {
+            '{' | '(' | '[' => depth += 1,
+            '}' | ')' | ']' => {
+                if depth > 0 {
+                    depth -= 1;
+                }
+            }
+            ',' if depth <= 1 => count += 1,
+            _ => {}
+        }
+    }
+    count
+}
+
+fn brace_counts(line: &str) -> (i32, i32) {
+    let mut opens = 0i32;
+    let mut closes = 0i32;
+    for ch in line.chars() {
+        if ch == '{' {
+            opens = opens.saturating_add(1);
+        } else if ch == '}' {
+            closes = closes.saturating_add(1);
+        }
+    }
+    (opens, closes)
+}
+
+fn starts_enum_decl(line: &str) -> bool {
+    let mut text = line.trim_start();
+    if let Some(rest) = text.strip_prefix("pub(crate)") {
+        text = rest.trim_start();
+    } else if let Some(rest) = text.strip_prefix("pub(super)") {
+        text = rest.trim_start();
+    } else if let Some(rest) = text.strip_prefix("pub(self)") {
+        text = rest.trim_start();
+    }
+    if let Some(rest) = text.strip_prefix("pub") {
+        text = rest.trim_start();
+    }
+    text.starts_with("enum ")
 }
 
 #[cfg(test)]
@@ -663,6 +1121,89 @@ fn process(values: &[String]) {
     }
 
     #[test]
+    fn detects_linked_list_usage() {
+        let code = r#"
+use std::collections::LinkedList;
+
+fn build(values: &[i32]) -> LinkedList<i32> {
+    let mut list = LinkedList::new();
+    for value in values {
+        list.push_back(*value);
+    }
+    list
+}
+"#;
+        let registry = registry();
+        let diags = lint_source(code, Path::new(TEST_FILE), registry);
+        assert!(diags.iter().any(|d| d.rule_id == "perf_avoid_linked_list"));
+    }
+
+    #[test]
+    fn detects_large_enum_variant() {
+        let code = r#"
+enum Payload {
+    Thin(u8),
+    Fat([u8; 2048]),
+}
+"#;
+        let registry = registry();
+        let diags = lint_source(code, Path::new(TEST_FILE), registry);
+        assert!(diags.iter().any(|d| d.rule_id == "perf_large_enum_variant"));
+    }
+
+    #[test]
+    fn detects_unnecessary_arc() {
+        let code = r#"
+use std::{cell::RefCell, sync::Arc};
+
+fn wrap(value: RefCell<String>) -> Arc<RefCell<String>> {
+    Arc::new(value)
+}
+"#;
+        let registry = registry();
+        let diags = lint_source(code, Path::new(TEST_FILE), registry);
+        assert!(diags.iter().any(|d| d.rule_id == "perf_unnecessary_arc"));
+    }
+
+    #[test]
+    fn detects_mutex_primitives() {
+        let code = r#"
+use std::sync::Mutex;
+
+fn make_flag() -> Mutex<bool> {
+    Mutex::new(true)
+}
+"#;
+        let registry = registry();
+        let diags = lint_source(code, Path::new(TEST_FILE), registry);
+        assert!(diags.iter().any(|d| d.rule_id == "perf_atomic_for_small_lock"));
+    }
+
+    #[test]
+    fn detects_needless_collect() {
+        let code = r#"
+fn count(items: &[i32]) -> usize {
+    items.iter().filter(|v| **v > 0).collect::<Vec<_>>().len()
+}
+"#;
+        let registry = registry();
+        let diags = lint_source(code, Path::new(TEST_FILE), registry);
+        assert!(diags.iter().any(|d| d.rule_id == "perf_needless_collect"));
+    }
+
+    #[test]
+    fn detects_small_box_allocations() {
+        let code = r#"
+fn boxed_point(x: i32, y: i32) -> Box<(i32, i32)> {
+    Box::new((x, y))
+}
+"#;
+        let registry = registry();
+        let diags = lint_source(code, Path::new(TEST_FILE), registry);
+        assert!(diags.iter().any(|d| d.rule_id == "perf_prefer_stack_alloc"));
+    }
+
+    #[test]
     fn fixtures_trigger_all_rules() {
         let code = include_str!("../fixtures/violations.rs");
         let registry = registry();
@@ -674,6 +1215,12 @@ fn process(values: &[String]) {
             "perf_avoid_reflection_dynamic",
             "perf_bound_concurrency",
             "perf_borrow_instead_of_clone",
+            "perf_avoid_linked_list",
+            "perf_large_enum_variant",
+            "perf_unnecessary_arc",
+            "perf_atomic_for_small_lock",
+            "perf_needless_collect",
+            "perf_prefer_stack_alloc",
         ]
         .into_iter()
         .map(String::from)

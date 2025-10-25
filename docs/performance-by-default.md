@@ -198,6 +198,96 @@ func writeBytes(w io.Writer, buf []byte) {
 }
 ```
 
+## Newly Added Rules
+
+### `perf_avoid_linked_list`
+```go
+import "container/list"
+
+func queue(items []int) *list.List {
+    ll := list.New() // perf_avoid_linked_list: slices or ring buffers stay cache-friendly
+    for _, item := range items {
+        ll.PushBack(item)
+    }
+    return ll
+}
+```
+
+### `perf_large_enum_variant`
+```rust
+enum Payload {
+    Small(u8),
+    Huge([u8; 16384]), // perf_large_enum_variant: box the huge payload to avoid bloating every enum value
+}
+```
+
+### `perf_unnecessary_arc`
+```rust
+use std::{cell::RefCell, sync::Arc};
+
+fn wrap(data: RefCell<String>) -> Arc<RefCell<String>> {
+    Arc::new(data) // perf_unnecessary_arc: use Rc or borrow since RefCell is !Send + !Sync
+}
+```
+
+### `perf_atomic_for_small_lock`
+```go
+type counter struct {
+    mu sync.Mutex
+    n  int
+}
+
+func (c *counter) incr() {
+    c.mu.Lock()
+    c.n++ // perf_atomic_for_small_lock: use sync/atomic for a lone primitive
+    c.mu.Unlock()
+}
+```
+
+### `perf_no_defer_in_loop`
+```go
+for _, f := range files {
+    fh, _ := os.Open(f)
+    defer fh.Close() // perf_no_defer_in_loop: close immediately to avoid piling up defers
+    // ...
+    fh.Close()
+}
+```
+
+### `perf_avoid_rune_conversion`
+```go
+for _, r := range []rune(input) { // perf_avoid_rune_conversion: ranging the string is allocation-free
+    consume(r)
+}
+```
+
+### `perf_needless_collect`
+```rust
+let count = items.iter().filter(|v| v.is_ok()).collect::<Vec<_>>().len();
+// perf_needless_collect: call count() or filter().count() to avoid building a Vec
+```
+
+### `perf_use_buffered_io`
+```go
+func writeLines(w io.Writer, lines []string) error {
+    for _, line := range lines {
+        if _, err := fmt.Fprintln(w, line); err != nil { // perf_use_buffered_io: wrap w with bufio.NewWriter
+            return err
+        }
+    }
+    return nil
+}
+```
+
+### `perf_prefer_stack_alloc`
+```go
+type point struct{ x, y int }
+
+func newPoint(x, y int) *point {
+    return &point{x: x, y: y} // perf_prefer_stack_alloc: return point by value when it's only 16 bytes
+}
+```
+
 ## Validation Workflow
 - Run `just go-maintain` to apply `golangci-lint fmt` (wrapping `gofmt`, `goimports`, `gci`, and `golines`), compile the GolangCI-Lint bridge, enforce the analyzer suite (including `testifylint`, `wastedassign`, and `whitespace`), verify modules, and ensure `govulncheck ./...` reports no vulnerabilities (first run may download advisory data).
 - Run `just rust-maintain` to verify formatting, clippy diagnostics, supply-chain checks, and unused dependency drift (requires installed `cargo-deny`, `cargo-audit`, and a nightly toolchain for `cargo udeps`; keep the RustSec database synced when network access is available).
